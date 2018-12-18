@@ -1,4 +1,3 @@
-val kotlin_version: String by extra
 plugins {
     id("com.android.library")
     id("kotlin-android")
@@ -20,8 +19,8 @@ android {
     }
 }
 
-project.group = Project.groupId
-project.version = Project.version
+group = Project.groupId
+version = Project.version
 
 publishing {
 
