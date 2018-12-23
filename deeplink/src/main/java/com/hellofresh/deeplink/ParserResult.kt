@@ -1,3 +1,3 @@
 package com.hellofresh.deeplink
 
-class ParserResult<out T>(val parserResult: T)
+class ParserResult<out T>(val value: T)
