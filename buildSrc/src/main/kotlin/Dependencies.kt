@@ -17,6 +17,7 @@ object Versions {
     const val detekt = "1.0.0-RC12"
     const val junit = "4.12"
     const val kotlin = "1.3.11"
+    const val supportTest = "1.0.2"
 }
 
 object Dependencies {
@@ -29,4 +30,6 @@ object Dependencies {
 object DependenciesTest {
 
     const val junit = "junit:junit:${Versions.junit}"
+    const val kotlinTest = "org.jetbrains.kotlin:kotlin-test:${Versions.kotlin}"
+    const val supportTestRunner = "com.android.support.test:runner:${Versions.supportTest}"
 }
