@@ -32,8 +32,6 @@ import java.util.Arrays
 import java.util.Collections
 import java.util.LinkedHashSet
 import java.util.Locale
-import kotlin.experimental.and
-import kotlin.experimental.or
 
 /**
  * Adapted from OkHttp's HttpUrl class.
@@ -1119,7 +1117,7 @@ class DeepLinkUri private constructor(builder: Builder) {
                     if (i == 16) result.writeByte(':'.toInt())
                 } else {
                     if (i > 0) result.writeByte(':'.toInt())
-                    val group = address[i] and (0xff shl 8).toByte() or (address[i + 1] and 0xff.toByte())
+                    val group = address[i].toInt() and (0xff shl 8) or (address[i + 1].toInt() and 0xff)
                     result.writeHexadecimalUnsignedLong(group.toLong())
                     i += 2
                 }
@@ -1387,10 +1385,10 @@ class DeepLinkUri private constructor(builder: Builder) {
                     }
                     utf8Buffer.writeUtf8CodePoint(codePoint)
                     while (!utf8Buffer.exhausted()) {
-                        val b = utf8Buffer.readByte() and 0xff.toByte()
+                        val b = utf8Buffer.readByte().toInt() and 0xff
                         out.writeByte('%'.toInt())
-                        out.writeByte(HEX_DIGITS[b.toInt() shr 4 and 0xf].toInt())
-                        out.writeByte(HEX_DIGITS[b.toInt() and 0xf].toInt())
+                        out.writeByte(HEX_DIGITS[b shr 4 and 0xf].toInt())
+                        out.writeByte(HEX_DIGITS[b and 0xf].toInt())
                     }
                 } else {
                     // This character doesn't need encoding. Just copy it over.
