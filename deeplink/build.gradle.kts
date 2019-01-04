@@ -3,11 +3,6 @@ plugins {
     id("kotlin-android")
     id("maven-publish")
 }
-apply {
-    plugin("kotlin-android")
-    plugin("kotlin-android-extensions")
-}
-
 
 android {
     compileSdkVersion(Android.sdk)
@@ -15,7 +10,8 @@ android {
         minSdkVersion(Android.minSdk)
         targetSdkVersion(Android.sdk)
         versionName = Project.version
-        setProperty("archivesBaseName", "${Project.name}")
+        setProperty("archivesBaseName", Project.name)
+        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
     }
 }
 
@@ -25,7 +21,7 @@ version = Project.version
 publishing {
 
     publications {
-        register("${Project.artifactId}", MavenPublication::class) {
+        register(Project.artifactId, MavenPublication::class) {
             groupId = Project.groupId
             artifactId = Project.artifactId
             artifact("$buildDir/outputs/aar/${Project.name}-${Project.version}.aar")
@@ -37,7 +33,11 @@ publishing {
 dependencies {
     implementation(Dependencies.kotlinStdLib)
     testImplementation(DependenciesTest.junit)
+    androidTestImplementation(DependenciesTest.junit)
+    androidTestImplementation(DependenciesTest.supportTestRunner)
+    androidTestImplementation(DependenciesTest.kotlinTest)
 }
+
 repositories {
     mavenCentral()
 }
