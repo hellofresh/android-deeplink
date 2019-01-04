@@ -41,6 +41,7 @@ import kotlin.experimental.or
  * Changes:
  * - Allow any scheme, instead of just http or https
  * - Migrated the class to Kotlin
+ * - Made a few API modifications for nullability support
  *
  * Original implementation:
  * https://github.com/square/okhttp/blob/master/okhttp/src/main/java/com/squareup/okhttp/HttpUri.java
@@ -1224,42 +1225,43 @@ class DeepLinkUri private constructor(builder: Builder) {
         }
 
         /**
-         * Returns a new `DeepLinkUri` representing `url` if it is a well-formed HTTP or HTTPS
-         * URL, or null if it isn't.
+         * Returns a new `DeepLinkUri` representing `uri` if it is a well-formed
+         * URI, or throws an `IllegalArgumentException` if it isn't.
          */
-        fun parse(url: String): DeepLinkUri? {
+        fun parse(uri: String): DeepLinkUri {
             val builder = Builder()
-            val result = builder.parse(null, url)
+            val result = builder.parse(null, uri)
+            return when (result) {
+                ParseResult.SUCCESS -> builder.build()
+                else -> throw IllegalArgumentException("Invalid URL: $result for $uri")
+            }
+        }
+
+        /**
+         * Returns a new `DeepLinkUri` representing `uri` if it is a well-formed
+         * URI, or null if it isn't.
+         */
+        fun parseOrNull(uri: String): DeepLinkUri? {
+            val builder = Builder()
+            val result = builder.parse(null, uri)
             return if (result == ParseResult.SUCCESS) builder.build() else null
         }
 
         /**
-         * Returns an [DeepLinkUri] for `url` if its protocol is `http` or
-         * `https`, or null if it has any other protocol.
+         * Returns an [DeepLinkUri] for `url` or throw.
+         *
+         * Use `parseOrNull(url.toString())` if you'd prefer a nullable version than throwing.
          */
-        internal operator fun get(url: URL): DeepLinkUri? {
+        fun get(url: URL): DeepLinkUri {
             return parse(url.toString())
         }
 
         /**
-         * Returns a new `DeepLinkUri` representing `url` if it is a well-formed HTTP or HTTPS
-         * URL, or throws an exception if it isn't.
+         * Returns an [DeepLinkUri] for `uri` or throw.
          *
-         * @throws MalformedURLException if there was a non-host related URL issue
-         * @throws UnknownHostException if the host was invalid
+         * Use `parseOrNull(uri.toString())` if you'd prefer a nullable version than throwing.
          */
-        @Throws(MalformedURLException::class, UnknownHostException::class)
-        internal fun getChecked(url: String): DeepLinkUri {
-            val builder = Builder()
-            val result = builder.parse(null, url)
-            when (result) {
-                ParseResult.SUCCESS -> return builder.build()
-                ParseResult.INVALID_HOST -> throw UnknownHostException("Invalid host: $url")
-                else -> throw MalformedURLException("Invalid URL: $result for $url")
-            }
-        }
-
-        internal operator fun get(uri: URI): DeepLinkUri? {
+        fun get(uri: URI): DeepLinkUri {
             return parse(uri.toString())
         }
 
