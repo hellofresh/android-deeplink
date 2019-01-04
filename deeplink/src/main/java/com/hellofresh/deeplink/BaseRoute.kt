@@ -1,11 +1,9 @@
 package com.hellofresh.deeplink
 
-import android.net.Uri
-
 abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
 
-    internal fun matchWith(uri: Uri): MatchResult {
-        val inputParts = uri.pathSegments
+    internal fun matchWith(uri: DeepLinkUri): MatchResult {
+        val inputParts = uri.pathSegments()
         routes.forEach { route ->
             val params = hashMapOf<String, String>()
 
@@ -20,8 +18,8 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
                     return@forEach
                 }
             }
-            uri.queryParameterNames.forEach { key ->
-                val queryValue = uri.getQueryParameter(key) ?: error("This should not happen!")
+            uri.queryParameterNames().forEach { key ->
+                val queryValue = uri.queryParameter(key) ?: error("This should not happen!")
                 if (key in params && params[key] != queryValue) {
                     // Warn: about to replace path param with query param
                     // Shall we rather skip this instead (since path should ideally trump query)?
