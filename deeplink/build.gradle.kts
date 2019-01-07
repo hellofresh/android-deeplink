@@ -32,10 +32,9 @@ publishing {
 
 dependencies {
     implementation(Dependencies.kotlinStdLib)
+    implementation(Dependencies.okio)
     testImplementation(DependenciesTest.junit)
-    androidTestImplementation(DependenciesTest.junit)
-    androidTestImplementation(DependenciesTest.supportTestRunner)
-    androidTestImplementation(DependenciesTest.kotlinTest)
+    testImplementation(DependenciesTest.kotlinTest)
 }
 
 repositories {

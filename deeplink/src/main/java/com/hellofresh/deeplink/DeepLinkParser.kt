@@ -1,14 +1,12 @@
 package com.hellofresh.deeplink
 
-import android.net.Uri
-
 class DeepLinkParser<T>(
     private val environment: Environment,
     private val routes: List<BaseRoute<T>>,
     private val fallback: Action<T>
 ) {
 
-    fun parse(uri: Uri): ParserResult<T> {
+    fun parse(uri: DeepLinkUri): ParserResult<T> {
         val (route, matchResult) = routes.asSequence()
             .map { it to it.matchWith(uri) }
             .firstOrNull { it.second.isMatch } ?: return fallback.run(uri, emptyMap(), environment)
