@@ -342,69 +342,60 @@ class DeepLinkUri private constructor(builder: Builder) {
             encodedPathSegments.add("") // The default path is '/' which needs a trailing space.
         }
 
-        fun scheme(scheme: String): Builder {
+        fun scheme(scheme: String): Builder = apply {
             this.scheme = scheme
-            return this
         }
 
-        fun username(username: String): Builder {
+        fun username(username: String): Builder = apply {
             this.encodedUsername = canonicalize(username, USERNAME_ENCODE_SET, alreadyEncoded = false, query = false)
-            return this
         }
 
-        fun encodedUsername(encodedUsername: String): Builder {
+        fun encodedUsername(encodedUsername: String): Builder = apply {
             this.encodedUsername = canonicalize(encodedUsername, USERNAME_ENCODE_SET,
                 alreadyEncoded = true,
                 query = false
             )
-            return this
         }
 
-        fun password(password: String): Builder {
+        fun password(password: String): Builder = apply {
             this.encodedPassword = canonicalize(password, PASSWORD_ENCODE_SET, alreadyEncoded = false, query = false)
-            return this
         }
 
-        fun encodedPassword(encodedPassword: String): Builder {
+        fun encodedPassword(encodedPassword: String): Builder = apply {
             this.encodedPassword = canonicalize(encodedPassword, PASSWORD_ENCODE_SET,
                 alreadyEncoded = true,
                 query = false
             )
-            return this
         }
 
         /**
          * @param host either a regular hostname, International Domain Name, IPv4 address, or IPv6
          * address.
          */
-        fun host(host: String): Builder {
+        fun host(host: String): Builder = apply {
             val encoded =
                 canonicalizeHost(host, 0, host.length) ?: throw IllegalArgumentException("unexpected host: $host")
             this.host = encoded
-            return this
         }
 
-        fun port(port: Int): Builder {
+        fun port(port: Int): Builder = apply {
             if (port !in 1..65535) throw IllegalArgumentException("unexpected port: $port")
             this.port = port
-            return this
         }
 
         fun effectivePort(): Int {
             return if (port != -1) port else defaultPort(scheme!!)
         }
 
-        fun addPathSegment(pathSegment: String): Builder {
+        fun addPathSegment(pathSegment: String): Builder = apply {
             push(pathSegment, 0, pathSegment.length, addTrailingSlash = false, alreadyEncoded = false)
-            return this
         }
 
-        fun addEncodedPathSegment(encodedPathSegment: String): Builder {
+        fun addEncodedPathSegment(encodedPathSegment: String): Builder = apply {
             push(encodedPathSegment, 0, encodedPathSegment.length, addTrailingSlash = false, alreadyEncoded = true)
-            return this
         }
 
-        fun setPathSegment(index: Int, pathSegment: String): Builder {
+        fun setPathSegment(index: Int, pathSegment: String): Builder = apply {
             val canonicalPathSegment = canonicalize(
                 pathSegment, 0, pathSegment.length, PATH_SEGMENT_ENCODE_SET, alreadyEncoded = false, query = false
             )
@@ -412,10 +403,9 @@ class DeepLinkUri private constructor(builder: Builder) {
                 throw IllegalArgumentException("unexpected path segment: $pathSegment")
             }
             encodedPathSegments[index] = canonicalPathSegment
-            return this
         }
 
-        fun setEncodedPathSegment(index: Int, encodedPathSegment: String): Builder {
+        fun setEncodedPathSegment(index: Int, encodedPathSegment: String): Builder = apply {
             val canonicalPathSegment = canonicalize(
                 encodedPathSegment,
                 0, encodedPathSegment.length, PATH_SEGMENT_ENCODE_SET, alreadyEncoded = true, query = false
@@ -424,34 +414,30 @@ class DeepLinkUri private constructor(builder: Builder) {
             if (isDot(canonicalPathSegment) || isDotDot(canonicalPathSegment)) {
                 throw IllegalArgumentException("unexpected path segment: $encodedPathSegment")
             }
-            return this
         }
 
-        fun removePathSegment(index: Int): Builder {
+        fun removePathSegment(index: Int): Builder = apply {
             encodedPathSegments.removeAt(index)
             if (encodedPathSegments.isEmpty()) {
                 encodedPathSegments.add("") // Always leave at least one '/'.
             }
-            return this
         }
 
-        fun encodedPath(encodedPath: String): Builder {
+        fun encodedPath(encodedPath: String): Builder = apply {
             if (!encodedPath.startsWith("/")) {
                 throw IllegalArgumentException("unexpected encodedPath: $encodedPath")
             }
             resolvePath(encodedPath, 0, encodedPath.length)
-            return this
         }
 
-        fun query(query: String?): Builder {
+        fun query(query: String?): Builder = apply {
             this.encodedQueryNamesAndValues = if (query != null)
                 queryStringToNamesAndValues(canonicalize(query, QUERY_ENCODE_SET, alreadyEncoded = false, query = true))
             else
                 null
-            return this
         }
 
-        fun encodedQuery(encodedQuery: String?): Builder {
+        fun encodedQuery(encodedQuery: String?): Builder = apply {
             this.encodedQueryNamesAndValues = if (encodedQuery != null)
                 queryStringToNamesAndValues(canonicalize(encodedQuery, QUERY_ENCODE_SET,
                     alreadyEncoded = true,
@@ -459,11 +445,10 @@ class DeepLinkUri private constructor(builder: Builder) {
                 ))
             else
                 null
-            return this
         }
 
         /** Encodes the query parameter using UTF-8 and adds it to this URL's query string.  */
-        fun addQueryParameter(name: String, value: String?): Builder {
+        fun addQueryParameter(name: String, value: String?): Builder = apply {
             val queries = encodedQueryNamesAndValues ?: arrayListOf<String?>().also {
                 encodedQueryNamesAndValues = it
             }
@@ -474,11 +459,10 @@ class DeepLinkUri private constructor(builder: Builder) {
                 else
                     null
             )
-            return this
         }
 
         /** Adds the pre-encoded query parameter to this URL's query string.  */
-        fun addEncodedQueryParameter(encodedName: String, encodedValue: String?): Builder {
+        fun addEncodedQueryParameter(encodedName: String, encodedValue: String?): Builder = apply {
             val queries = encodedQueryNamesAndValues ?: arrayListOf<String?>().also {
                 encodedQueryNamesAndValues = it
             }
@@ -489,34 +473,29 @@ class DeepLinkUri private constructor(builder: Builder) {
                 else
                     null
             )
-            return this
         }
 
-        fun setQueryParameter(name: String, value: String): Builder {
+        fun setQueryParameter(name: String, value: String): Builder = apply {
             removeAllQueryParameters(name)
             addQueryParameter(name, value)
-            return this
         }
 
-        fun setEncodedQueryParameter(encodedName: String, encodedValue: String): Builder {
+        fun setEncodedQueryParameter(encodedName: String, encodedValue: String): Builder = apply {
             removeAllEncodedQueryParameters(encodedName)
             addEncodedQueryParameter(encodedName, encodedValue)
-            return this
         }
 
-        fun removeAllQueryParameters(name: String): Builder {
-            if (encodedQueryNamesAndValues == null) return this
+        fun removeAllQueryParameters(name: String): Builder = apply {
+            if (encodedQueryNamesAndValues == null) return@apply
             val nameToRemove = canonicalize(name, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = false, query = true)
             removeAllCanonicalQueryParameters(nameToRemove)
-            return this
         }
 
-        fun removeAllEncodedQueryParameters(encodedName: String): Builder {
-            if (encodedQueryNamesAndValues == null) return this
+        fun removeAllEncodedQueryParameters(encodedName: String): Builder = apply {
+            if (encodedQueryNamesAndValues == null) return@apply
             removeAllCanonicalQueryParameters(
                 canonicalize(encodedName, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = true, query = true)
             )
-            return this
         }
 
         private fun removeAllCanonicalQueryParameters(canonicalName: String) {
@@ -535,17 +514,15 @@ class DeepLinkUri private constructor(builder: Builder) {
             }
         }
 
-        fun fragment(fragment: String): Builder {
+        fun fragment(fragment: String): Builder = apply {
             this.encodedFragment = canonicalize(fragment, FRAGMENT_ENCODE_SET, alreadyEncoded = false, query = false)
-            return this
         }
 
-        fun encodedFragment(encodedFragment: String): Builder {
+        fun encodedFragment(encodedFragment: String): Builder = apply {
             this.encodedFragment = canonicalize(encodedFragment, FRAGMENT_ENCODE_SET,
                 alreadyEncoded = true,
                 query = false
             )
-            return this
         }
 
         fun build(): DeepLinkUri {
