@@ -4,7 +4,7 @@ package com.hellofresh.deeplink
 object RecipeRoute : BaseRoute<String>("recipes", "recipe/:id") {
 
     override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment): String {
-        return params["id"] ?: return javaClass.simpleName
+        return params["id"] ?: javaClass.simpleName
     }
 }
 
