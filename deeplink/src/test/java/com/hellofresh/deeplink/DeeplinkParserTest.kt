@@ -11,12 +11,8 @@ class DeepLinkParserTest {
         .addRoute(RecipeRoute)
         .addRoute(SubscriptionRoute)
         .addFallbackAction(object : Action<String> {
-            override fun run(
-                uri: DeepLinkUri,
-                params: Map<String, String>,
-                environment: Environment
-            ): ParserResult<String> {
-                return ParserResult("fallback")
+            override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment): String {
+                return "fallback"
             }
         })
         .build()
@@ -32,21 +28,21 @@ class DeepLinkParserTest {
 
     @Test
     fun parseSimple() {
-        assertEquals("RecipeRoute", parser.parse(DeepLinkUri.parse("http://world.com/recipes")).value)
+        assertEquals("RecipeRoute", parser.parse(DeepLinkUri.parse("http://world.com/recipes")))
     }
 
     @Test
     fun parseWithParam() {
-        assertEquals("1234", parser.parse(DeepLinkUri.parse("http://world.com/recipe/1234")).value)
+        assertEquals("1234", parser.parse(DeepLinkUri.parse("http://world.com/recipe/1234")))
     }
 
     @Test
     fun parseWithNextRouter() {
-        assertEquals("SubscriptionRoute", parser.parse(DeepLinkUri.parse("custom://host/subscription")).value)
+        assertEquals("SubscriptionRoute", parser.parse(DeepLinkUri.parse("hellofresh://host/subscription")))
     }
 
     @Test
     fun parseFallback() {
-        assertEquals("fallback", parser.parse(DeepLinkUri.parse("http://world.com/unknown")).value)
+        assertEquals("fallback", parser.parse(DeepLinkUri.parse("http://world.com/unknown")))
     }
 }

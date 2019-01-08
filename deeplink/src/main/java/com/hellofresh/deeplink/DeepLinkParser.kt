@@ -6,7 +6,7 @@ class DeepLinkParser<T>(
     private val fallback: Action<T>
 ) {
 
-    fun parse(uri: DeepLinkUri): ParserResult<T> {
+    fun parse(uri: DeepLinkUri): T {
         val (route, matchResult) = routes.asSequence()
             .map { it to it.matchWith(uri) }
             .firstOrNull { it.second.isMatch } ?: return fallback.run(uri, emptyMap(), environment)
