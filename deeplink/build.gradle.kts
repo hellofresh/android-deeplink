@@ -35,6 +35,9 @@ dependencies {
     implementation(Dependencies.okio)
     testImplementation(DependenciesTest.junit)
     testImplementation(DependenciesTest.kotlinTest)
+    androidTestImplementation(DependenciesTest.junit)
+    androidTestImplementation(DependenciesTest.kotlinTest)
+    androidTestImplementation(DependenciesTest.supportTestRunner)
 }
 
 repositories {
