@@ -18,15 +18,12 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
                     return@forEach
                 }
             }
-            uri.queryParameterNames().forEach { key ->
-                val queryValue = uri.queryParameter(key) ?: error("This should not happen!")
-                if (key in params && params[key] != queryValue) {
-                    // Warn: about to replace path param with query param
-                    // Shall we rather skip this instead (since path should ideally trump query)?
-                    // Or perhaps, just throw an exception and return?
+            uri.queryParameterNames()
+                .filter { it !in params }
+                .forEach { key ->
+                    val queryValue = uri.queryParameter(key) ?: error("""Query "$key" has a null value!""")
+                    params[key] = queryValue
                 }
-                params[key] = queryValue
-            }
             return MatchResult(true, params)
         }
         return MatchResult(false)
