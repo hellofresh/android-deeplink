@@ -48,7 +48,7 @@ class BaseRouteTest {
     }
 
     @Test
-    fun matchWith_DefaultPathRetrieval() {
+    fun matchWith_DefaultPathResolution() {
         val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234")
         assertTrue(TestRoute.matchWith(uri).isMatch)
 
@@ -60,7 +60,7 @@ class BaseRouteTest {
     }
 
     @Test
-    fun matchWith_OverridePathRetrieval() {
+    fun matchWith_OverridePathResolution() {
         val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234")
         assertTrue(PathOverrideRoute.matchWith(uri).isMatch)
 
@@ -71,22 +71,17 @@ class BaseRouteTest {
         assertTrue(PathOverrideRoute.matchWith(customUriNoHost).isMatch)
     }
 
-    object TestRoute : BaseRoute<String>("recipe/:id") {
+    object TestRoute : BaseRoute<Unit>("recipe/:id") {
 
-        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = TODO()
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = Unit
     }
 
-    object PathOverrideRoute : BaseRoute<String>("recipe/:id") {
+    object PathOverrideRoute : BaseRoute<Unit>("recipe/:id") {
 
-        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = TODO()
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = Unit
 
-        override fun retrieveHostAndPathSegments(uri: DeepLinkUri): Pair<String, List<String>> {
-            if (uri.scheme() in arrayOf("http", "https")) {
-                return super.retrieveHostAndPathSegments(uri)
-            }
-            val host = uri.host()
-            val pathSegments = uri.pathSegments()
-            return "" to listOf(host) + pathSegments
+        override fun treatHostAsPath(uri: DeepLinkUri): Boolean {
+            return uri.scheme() == "hellofresh"
         }
     }
 }

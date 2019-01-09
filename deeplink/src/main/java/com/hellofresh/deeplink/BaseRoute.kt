@@ -29,16 +29,25 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
         return MatchResult(false)
     }
 
-    /**
-     * Retrieves the host and path segments from a given [uri] and returns them as a pair.
-     *
-     * This is essentially exposed for use cases with custom URIs where the user might
-     * treat the host as part of the path segments.
-     * The default implementation just returns the actual [uri] host and path segments
-     * accordingly.
-     */
-    protected open fun retrieveHostAndPathSegments(uri: DeepLinkUri): Pair<String, List<String>> {
+    private fun retrieveHostAndPathSegments(uri: DeepLinkUri): Pair<String, List<String>> {
+        if (treatHostAsPath(uri)) {
+            val pathSegments = ArrayList<String>(uri.pathSize() + 1)
+            pathSegments.add(uri.host())
+            pathSegments.addAll(uri.pathSegments())
+            return "" to pathSegments
+        }
         return uri.host() to uri.pathSegments()
+    }
+
+    /**
+     * Returns whether or not to treat the [uri] host as part of the path segments.
+     *
+     * This is useful for URIs with custom schemes that do not have an explicit
+     * host, but rather uses the scheme as the deeplink identifier. In such cases,
+     * one might prefer to treat the host itself as a path segment.
+     */
+    protected open fun treatHostAsPath(uri: DeepLinkUri): Boolean {
+        return false
     }
 
     override fun equals(other: Any?): Boolean {
