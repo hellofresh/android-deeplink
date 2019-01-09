@@ -3,6 +3,8 @@ package com.hellofresh.deeplink
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class BaseRouteTest {
 
@@ -45,8 +47,41 @@ class BaseRouteTest {
         assertEquals("5678", uri.queryParameter("id"))
     }
 
-    object TestRoute : BaseRoute<String>("recipe/:id") {
+    @Test
+    fun matchWith_DefaultPathResolution() {
+        val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
 
-        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = TODO()
+        val customUriWithHost = DeepLinkUri.parse("hellofresh://host/recipe/1234")
+        assertTrue(TestRoute.matchWith(customUriWithHost).isMatch)
+
+        val customUriNoHost = DeepLinkUri.parse("hellofresh://recipe/1234")
+        assertFalse(TestRoute.matchWith(customUriNoHost).isMatch)
+    }
+
+    @Test
+    fun matchWith_OverridePathResolution() {
+        val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234")
+        assertTrue(PathOverrideRoute.matchWith(uri).isMatch)
+
+        val customUriWithHost = DeepLinkUri.parse("hellofresh://host/recipe/1234")
+        assertFalse(PathOverrideRoute.matchWith(customUriWithHost).isMatch)
+
+        val customUriNoHost = DeepLinkUri.parse("hellofresh://recipe/1234")
+        assertTrue(PathOverrideRoute.matchWith(customUriNoHost).isMatch)
+    }
+
+    object TestRoute : BaseRoute<Unit>("recipe/:id") {
+
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = Unit
+    }
+
+    object PathOverrideRoute : BaseRoute<Unit>("recipe/:id") {
+
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = Unit
+
+        override fun treatHostAsPath(uri: DeepLinkUri): Boolean {
+            return uri.scheme() == "hellofresh"
+        }
     }
 }

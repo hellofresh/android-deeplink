@@ -3,7 +3,7 @@ package com.hellofresh.deeplink
 abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
 
     internal fun matchWith(uri: DeepLinkUri): MatchResult {
-        val inputParts = uri.pathSegments()
+        val (_, inputParts) = retrieveHostAndPathSegments(uri)
         routes.forEach { route ->
             val params = hashMapOf<String, String>()
 
@@ -27,6 +27,27 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
             return MatchResult(true, params)
         }
         return MatchResult(false)
+    }
+
+    private fun retrieveHostAndPathSegments(uri: DeepLinkUri): Pair<String, List<String>> {
+        if (treatHostAsPath(uri)) {
+            val pathSegments = ArrayList<String>(uri.pathSize() + 1)
+            pathSegments.add(uri.host())
+            pathSegments.addAll(uri.pathSegments())
+            return "" to pathSegments
+        }
+        return uri.host() to uri.pathSegments()
+    }
+
+    /**
+     * Returns whether or not to treat the [uri] host as part of the path segments.
+     *
+     * This is useful for URIs with custom schemes that do not have an explicit
+     * host, but rather uses the scheme as the deeplink identifier. In such cases,
+     * one might prefer to treat the host itself as a path segment.
+     */
+    protected open fun treatHostAsPath(uri: DeepLinkUri): Boolean {
+        return false
     }
 
     override fun equals(other: Any?): Boolean {
