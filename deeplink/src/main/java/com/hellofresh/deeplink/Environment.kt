@@ -2,8 +2,8 @@ package com.hellofresh.deeplink
 
 import android.content.Context
 
-interface Environment
+interface Environment {
 
-object EmptyEnvironment : Environment
-
-class ContextEnvironment(val context: Context) : Environment
+    val context: Context
+    val isAuthenticated: Boolean
+}
