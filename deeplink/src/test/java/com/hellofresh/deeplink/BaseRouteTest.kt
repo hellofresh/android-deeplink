@@ -73,12 +73,12 @@ class BaseRouteTest {
 
     object TestRoute : BaseRoute<Unit>("recipe/:id") {
 
-        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = Unit
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
     }
 
     object PathOverrideRoute : BaseRoute<Unit>("recipe/:id") {
 
-        override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment) = Unit
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
 
         override fun treatHostAsPath(uri: DeepLinkUri): Boolean {
             return uri.scheme() == "hellofresh"

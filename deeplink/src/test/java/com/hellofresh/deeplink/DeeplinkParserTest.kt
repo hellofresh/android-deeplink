@@ -11,7 +11,7 @@ class DeepLinkParserTest {
         .addRoute(RecipeRoute)
         .addRoute(SubscriptionRoute)
         .addFallbackAction(object : Action<String> {
-            override fun run(uri: DeepLinkUri, params: Map<String, String>, environment: Environment): String {
+            override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): String {
                 return "fallback"
             }
         })
