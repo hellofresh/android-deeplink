@@ -2,6 +2,7 @@ plugins {
     id("com.android.library")
     id("kotlin-android")
     id("maven-publish")
+    id("com.github.breadmoirai.github-release") version Versions.githubReleaseGradlePlugin
 }
 
 android {
@@ -18,13 +19,14 @@ android {
 group = Project.groupId
 version = Project.version
 
+val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}.aar"
 publishing {
 
     publications {
         register(Project.artifactId, MavenPublication::class) {
             groupId = Project.groupId
             artifactId = Project.artifactId
-            artifact("$buildDir/outputs/aar/${Project.name}-${Project.version}.aar")
+            artifact(artifact)
             version = Project.version
         }
     }
@@ -42,4 +44,12 @@ dependencies {
 
 repositories {
     mavenCentral()
+}
+
+githubRelease {
+    token(System.getenv("GITHUB_TOKEN") ?: "")
+    owner("hellofresh")
+    repo("android-deeplink")
+    releaseAssets(artifact)
+    setOverwrite(true)
 }
