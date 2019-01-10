@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/hellofresh/android-deeplink/branch/master/graph/badge.svg?token=pYXRTssjCY)](https://codecov.io/gh/hellofresh/android-deeplink)
+
 # android-deeplink
 
 Deeplink library for HF Android projects
