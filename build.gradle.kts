@@ -18,7 +18,6 @@ buildscript {
 
 plugins {
     id("io.gitlab.arturbosch.detekt") version Versions.detekt
-    id("com.jfrog.bintray") version Versions.bintrayGradlePlugin
 }
 
 allprojects {
