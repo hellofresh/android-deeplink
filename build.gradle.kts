@@ -18,7 +18,7 @@ buildscript {
 
 plugins {
     id("io.gitlab.arturbosch.detekt") version Versions.detekt
-    id("com.vanniktech.android.junit.jacoco") version Versions.junitJacoco
+    id("com.jfrog.bintray") version Versions.bintrayGradlePlugin
 }
 
 allprojects {
