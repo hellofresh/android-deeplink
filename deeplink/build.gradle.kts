@@ -11,7 +11,7 @@ android {
         minSdkVersion(Android.minSdk)
         targetSdkVersion(Android.sdk)
         versionName = Project.version
-        setProperty("archivesBaseName", Project.name)
+        setProperty("archivesBaseName", "${Project.name}-${Project.version}")
         testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
     }
 }
@@ -19,7 +19,8 @@ android {
 group = Project.groupId
 version = Project.version
 
-val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}.aar"
+val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}-release.aar"
+
 publishing {
 
     publications {
@@ -42,14 +43,11 @@ dependencies {
     androidTestImplementation(DependenciesTest.supportTestRunner)
 }
 
-repositories {
-    mavenCentral()
-}
-
 githubRelease {
     token(System.getenv("GITHUB_TOKEN") ?: "")
     owner("hellofresh")
     repo("android-deeplink")
     releaseAssets(artifact)
     setOverwrite(true)
+    setBody("")
 }
