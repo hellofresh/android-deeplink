@@ -35,8 +35,3 @@ detekt {
     input = files("src/main/kotlin")
     filters = ".*/resources/.*,.*/build/.*"
 }
-
-junitJacoco {
-    jacocoVersion = "0.8.2"
-    excludes = Excludes.jacocoAndroid
-}
