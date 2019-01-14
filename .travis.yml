@@ -1,0 +1,37 @@
+language: android
+android:
+  components:
+    # travis/android: https://docs.travis-ci.com/user/languages/android/
+    - tools
+    - platform-tools
+    - tools
+    # The BuildTools version used by the project
+    - build-tools-28.0.3
+    # The SDK version used to compile the project
+    - android-28
+
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+before_install:
+  - yes | sdkmanager "platforms;android-28" "platform-tools" "tools"
+cache:
+  directories:
+    - "$HOME/.gradle/caches/"
+    - "$HOME/.gradle/wrapper/"
+    - "$HOME/.android/build-cache"
+before_script:
+  - export VERSION_TO_BUILD="$TRAVIS_TAG"
+  - export PATH="$ANDROID_HOMEtools/bin:$PATH"
+script:
+  - "./gradlew --stacktrace check --no-daemon"
+deploy:
+  provider: releases
+  api_key: "$GITHUB_OAUTH_TOKEN"
+  file: deeplink/build/outputs/apk/android-deeplink-${VERSION_TO_BUILD}-release.aar
+  skip_cleanup: true
+  on:
+    tags: true
+env:
+  global:
+    secure: TSufAoZ+sCdfa+SIqOj3FIxpt7C6oRxfzE52AMdxlb3RU5aNWXu4fZzoAdT6reGeBNaLYIc5HpkWGOAoa1VGMY8Pn8EfjbqrXO6Q2oBGjQt8OLbFQ51JgnkNoot9KKwF716lcpGtE3+oQFwS+XKLF4NHrcnXIHHIJ9YRgCrd+0vpqtHPGbpsKrvjJxEUNICmzBEB/OtMX7X4aRgY6E0TguMYW9xtyixuzGPQOs+JipPbMGmxgvfTSvXc+1jbM9TJnMEGStElsrOfB8ebvFtcj0ufweIgdMXgKS5ypPEPykSWz/qoPpD2TJHAWhXXnjx2VpuHZwZdea/tJhpx6BctmAkaRGzIVGrgLJFsMzJGcjkaTIix5gPQSMMY9cfySgxCr1BQk95erJehMhrdtMWDgM7D9Cja2o/4qyCPWKKyZ5GZMbjFHOq75ihsfCJnnwGDFr6NYHn8xdnKxw5A2IHmiNRBxpUkXs7kRazxjbxWC3a0LlpNm9bdZlzHvNqIvR5S3W1FNeAlbcBKkLZCmNFsh/Y7FBRaVQAcIfwgn9HK/fjfB1/ltaX0mqkJNthVM17kC2ldcLLAY7KLwq+MrqzpCJTwwufepH57xKWshiCXO/GsilmNAnShq06wFHtviVeXcBkuQqdfqAmLYxzZtZqwDXwcDU9abcwPZ9tlLm5qwfM=
