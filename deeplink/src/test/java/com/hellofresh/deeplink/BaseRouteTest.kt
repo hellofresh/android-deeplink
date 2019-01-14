@@ -71,6 +71,18 @@ class BaseRouteTest {
         assertTrue(PathOverrideRoute.matchWith(customUriNoHost).isMatch)
     }
 
+    @Test
+    fun matchWith_namelessPathResolution() {
+        var uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/me/1234")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/customer-key/1234")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/anything/1234")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+    }
+
     object TestRoute : BaseRoute<Unit>("recipe/:id") {
 
         override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
@@ -83,5 +95,10 @@ class BaseRouteTest {
         override fun treatHostAsPath(uri: DeepLinkUri): Boolean {
             return uri.scheme() == "hellofresh"
         }
+    }
+    
+    object NamelessPathRoute : BaseRoute<Unit>("recipes/*/:id") {
+
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
     }
 }

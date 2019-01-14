@@ -12,10 +12,10 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
                 return@forEach
             }
             inputParts.zip(parts) { inPart, routePart ->
-                if (routePart.startsWith(":")) {
-                    params[routePart.substring(1)] = inPart
-                } else if (inPart != routePart) {
-                    return@forEach
+                when {
+                    routePart.startsWith(":") -> params[routePart.substring(1)] = inPart
+                    routePart == "*" -> return@zip
+                    routePart != inPart -> return@forEach
                 }
             }
             uri.queryParameterNames()
