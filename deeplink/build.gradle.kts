@@ -64,15 +64,18 @@ bintray {
     publish = true
     setPublications(Project.artifactId)
     pkg(delegateClosureOf<BintrayExtension.PackageConfig> {
-        repo = Project.name
+        repo = "maven"
         name = Project.name
         userOrg = "hf-android-clan"
         websiteUrl = "https://github.com/hellofresh/android-deeplink/"
         githubRepo = "hellofresh/android-deeplink"
         vcsUrl = "https://github.com/hellofresh/android-deeplink/"
         description = "Deeplink parser library"
-        setLabels("kotlin")
+        setLabels("kotlin", "Android", "Deep link")
         setLicenses("Apache-2.0")
         desc = description
+        publish = true
+        githubRepo = "hellofresh/android-deeplink"
+        githubReleaseNotesFile = "../CHANGELOG.md"
     })
 }
