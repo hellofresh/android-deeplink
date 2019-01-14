@@ -28,12 +28,19 @@ script:
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 deploy:
-  provider: releases
-  api_key: "$GITHUB_OAUTH_TOKEN"
-  file: deeplink/build/outputs/apk/android-deeplink-${VERSION_TO_BUILD}-release.aar
-  skip_cleanup: true
+  - provider: releases
+    api_key: "$GITHUB_OAUTH_TOKEN"
+    file: deeplink/build/outputs/apk/android-deeplink-${VERSION_TO_BUILD}-release.aar
+    skip_cleanup: true
+    script: ./gradlew clean build
+    on:
+      tags: true
+  - provider: script
+    skip_cleanup: true
+    script: ./gradlew clean bintrayUpload
   on:
     tags: true
+
 env:
   global:
     - secure: QhaNLRhq5BzI5VpKIfwDuUUJOhAsqUnLwzLhzTWjD39YJwg4BAagRUbceKFUiT5JALdlVB9yPBdvDZHcqRxgtXFGSy0Yzr/Um8IwQ05ISwi4OcaOmI84y0KRPlcvMO6Gc5e+XY4SPYK/7PyIaVdLCZ/bi9hNb20Bc+h+0dmdz8/IdR+7p3e3zPI07aJJs3R8trCUvbRtmS3C32RBNGwQgWblDqTTaJQR9XtWRIQIG8n01Xf1WYnDMZrwYDbQ5wjYRtAViZl8txfVU6Syg96mt8/+cVc1ogXr0K05IhBl/uK8chSHsaNrvk52JKSsDI8SXYgjFyVkdP9kzYmtfRV9EcmnHIIFw8wAfhkceH1YPTH4qdqnUXrslJWgKQfEsp6xl6Dt25cyjvBNj3qxzl+htg7XT3qrPZsjH5OfeHzL3f+lzXZHpLwdCVIqdSGThqcQtXRpi+RYq97yRSo8t1NzHt3Y4xhALOAji3Rp4F1A4g9AsxYHBjFL8NfQCenhGI8Gk2JXi8E8+ba4W3c+upNrQD/Swdc1QtBRvmCz+so8BNaDaLYiQAm40cpcUN5qaLhcnSqFBYUtM1YJlyM4cvLByF8HEt4ybZ+/SxorER2rSaHRyF92/tx5bZbxrf6jMMgXCfSz0BPqiQqy8Q0md5iBMfK/jCScJIG6A4hSHjuTT9s=
