@@ -16,6 +16,7 @@ object Versions {
     const val androidGradlePlugin = "3.4.0-alpha10"
     const val detekt = "1.0.0-RC12"
     const val githubReleaseGradlePlugin = "2.2.3"
+    const val junitJacoco = "0.13.0"
     const val junit = "4.12"
     const val kotlin = "1.3.11"
     const val okio = "2.1.0"
