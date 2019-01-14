@@ -2,7 +2,6 @@ plugins {
     id("com.android.library")
     id("kotlin-android")
     id("maven-publish")
-    id("com.github.breadmoirai.github-release") version Versions.githubReleaseGradlePlugin
 }
 
 android {
@@ -44,12 +43,4 @@ dependencies {
 
 repositories {
     mavenCentral()
-}
-
-githubRelease {
-    token(System.getenv("GITHUB_TOKEN") ?: "")
-    owner("hellofresh")
-    repo("android-deeplink")
-    releaseAssets(artifact)
-    setOverwrite(true)
 }

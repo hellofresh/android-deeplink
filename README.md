@@ -1,10 +1,9 @@
-[![codecov](https://codecov.io/gh/hellofresh/android-deeplink/branch/master/graph/badge.svg?token=pYXRTssjCY)](https://codecov.io/gh/hellofresh/android-deeplink)
+[![Build Status](https://travis-ci.com/hellofresh/android-deeplink.svg?branch=master)](https://travis-ci.com/hellofresh/android-deeplink) [![codecov](https://codecov.io/gh/hellofresh/android-deeplink/branch/master/graph/badge.svg?token=pYXRTssjCY)](https://codecov.io/gh/hellofresh/android-deeplink)
 
 # android-deeplink
 
 Deeplink parser library
 
-[![Build Status](https://travis-ci.com/hellofresh/android-deeplink.svg?branch=master)](https://travis-ci.com/hellofresh/android-deeplink)
 
 ## Sample usage
 The most important entry points are the `DeepLinkParser<T>` and `BaseRoute<T>` classes.

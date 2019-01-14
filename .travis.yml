@@ -25,6 +25,8 @@ before_script:
   - export PATH="$ANDROID_HOMEtools/bin:$PATH"
 script:
   - "./gradlew --stacktrace check --no-daemon"
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 deploy:
   provider: releases
   api_key: "$GITHUB_OAUTH_TOKEN"
