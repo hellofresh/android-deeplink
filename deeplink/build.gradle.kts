@@ -1,4 +1,3 @@
-import com.jfrog.bintray.gradle.BintrayExtension
 import org.gradle.api.publish.maven.MavenPom
 import org.jetbrains.dokka.gradle.DokkaTask
 
@@ -34,18 +33,6 @@ dependencies {
     androidTestImplementation(DependenciesTest.supportTestRunner)
 }
 
-fun MavenPom.addDependencies() = withXml {
-    asNode().appendNode("dependencies").let { depNode ->
-        configurations.compile.allDependencies.forEach {
-            depNode.appendNode("dependency").apply {
-                appendNode("groupId", it.group)
-                appendNode("artifactId", it.name)
-                appendNode("version", it.version)
-            }
-        }
-    }
-}
-
 val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}-release.aar"
 
 val sourcesJar by tasks.creating(Jar::class) {
@@ -66,8 +53,8 @@ val dokkaJar by tasks.creating(Jar::class) {
 }
 
 artifacts {
-    add("archives", sourcesJar)
-    add("archives", dokkaJar)
+    archives(sourcesJar)
+    archives(dokkaJar)
 }
 
 
@@ -107,5 +94,17 @@ bintray {
         }
         setLabels("kotlin", "Android", "Deep link")
         setLicenses("Apache-2.0")
+    }
+}
+
+fun MavenPom.addDependencies() = withXml {
+    asNode().appendNode("dependencies").let { depNode ->
+        configurations.compile.allDependencies.forEach {
+            depNode.appendNode("dependency").apply {
+                appendNode("groupId", it.group)
+                appendNode("artifactId", it.name)
+                appendNode("version", it.version)
+            }
+        }
     }
 }
