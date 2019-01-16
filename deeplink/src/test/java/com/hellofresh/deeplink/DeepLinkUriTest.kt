@@ -17,35 +17,51 @@ package com.hellofresh.deeplink
 
 import org.junit.Ignore
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
 import java.net.URI
 import java.net.URL
+import java.util.Arrays
 import java.util.LinkedHashSet
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.fail
 
+@RunWith(Parameterized::class)
 class DeepLinkUriTest {
 
+    @JvmField
+    @Parameterized.Parameter
+    var useGet: Boolean = false
+    
+    private fun parse(link: String): DeepLinkUri? {
+        return when {
+            useGet -> DeepLinkUri.parse(link)
+            else -> DeepLinkUri.parseOrNull(link)
+        }
+    }
+
     @Test
-    fun parseOrNullTrimsAsciiWhitespace() {
-        val expected = DeepLinkUri.parse("http://host/")
-        assertEquals(expected, DeepLinkUri.parseOrNull("http://host/\u000c\n\t \r")) // Leading.
-        assertEquals(expected, DeepLinkUri.parseOrNull("\r\n\u000c \thttp://host/")) // Trailing.
-        assertEquals(expected, DeepLinkUri.parseOrNull(" http://host/ ")) // Both.
-        assertEquals(expected, DeepLinkUri.parseOrNull("    http://host/    ")) // Both.
+    fun parseTrimsAsciiWhitespace() {
+        val expected = parse("http://host/")
+        assertEquals(expected, DeepLinkUri.parse("http://host/\u000c\n\t \r")) // Leading.
+        assertEquals(expected, DeepLinkUri.parse("\r\n\u000c \thttp://host/")) // Trailing.
+        assertEquals(expected, DeepLinkUri.parse(" http://host/ ")) // Both.
+        assertEquals(expected, DeepLinkUri.parse("    http://host/    ")) // Both.
         assertEquals(expected, DeepLinkUri.parse("http://host/").resolve("   "))
         assertEquals(expected, DeepLinkUri.parse("http://host/").resolve("  .  "))
     }
 
     @Test
-    fun parseOrNullHostAsciiNonPrintable() {
+    fun parseHostAsciiNonPrintable() {
         val host = "host\u0001"
-        assertNull(DeepLinkUri.parseOrNull("http://$host/"))
+        assertInvalid("http://$host/", "Invalid URL host: \"host\u0001\"")
+        // TODO make exception message escape non-printable characters
     }
 
     @Test
-    fun parseOrNullDoesNotTrimOtherWhitespaceCharacters() {
+    fun parseDoesNotTrimOtherWhitespaceCharacters() {
         // Whitespace characters list from Google's Guava team: http://goo.gl/IcR9RD
         assertEquals("/%0B", DeepLinkUri.parse("http://h/\u000b").encodedPath()) // line tabulation
         assertEquals("/%1C", DeepLinkUri.parse("http://h/\u001c").encodedPath()) // information separator 4
@@ -55,10 +71,7 @@ class DeepLinkUriTest {
         assertEquals("/%C2%85", DeepLinkUri.parse("http://h/\u0085").encodedPath()) // next line
         assertEquals("/%C2%A0", DeepLinkUri.parse("http://h/\u00a0").encodedPath()) // non-breaking space
         assertEquals("/%E1%9A%80", DeepLinkUri.parse("http://h/\u1680").encodedPath()) // ogham space mark
-        assertEquals(
-            "/%E1%A0%8E",
-            DeepLinkUri.parse("http://h/\u180e").encodedPath()
-        ) // mongolian vowel separator
+        assertEquals("/%E1%A0%8E", DeepLinkUri.parse("http://h/\u180e").encodedPath()) // mongolian vowel separator
         assertEquals("/%E2%80%80", DeepLinkUri.parse("http://h/\u2000").encodedPath()) // en quad
         assertEquals("/%E2%80%81", DeepLinkUri.parse("http://h/\u2001").encodedPath()) // em quad
         assertEquals("/%E2%80%82", DeepLinkUri.parse("http://h/\u2002").encodedPath()) // en space
@@ -77,141 +90,205 @@ class DeepLinkUriTest {
         assertEquals("/%E2%80%8F", DeepLinkUri.parse("http://h/\u200f").encodedPath()) // right-to-left mark
         assertEquals("/%E2%80%A8", DeepLinkUri.parse("http://h/\u2028").encodedPath()) // line separator
         assertEquals("/%E2%80%A9", DeepLinkUri.parse("http://h/\u2029").encodedPath()) // paragraph separator
-        assertEquals(
-            "/%E2%80%AF",
-            DeepLinkUri.parse("http://h/\u202f").encodedPath()
-        ) // narrow non-breaking space
-        assertEquals(
-            "/%E2%81%9F",
-            DeepLinkUri.parse("http://h/\u205f").encodedPath()
-        ) // medium mathematical space
+        assertEquals("/%E2%80%AF", DeepLinkUri.parse("http://h/\u202f").encodedPath()) // narrow non-breaking space
+        assertEquals("/%E2%81%9F", DeepLinkUri.parse("http://h/\u205f").encodedPath()) // medium mathematical space
         assertEquals("/%E3%80%80", DeepLinkUri.parse("http://h/\u3000").encodedPath()) // ideographic space
     }
 
     @Test
     fun scheme() {
-        assertEquals(DeepLinkUri.parse("http://host/"), DeepLinkUri.parse("http://host/"))
-        assertEquals(DeepLinkUri.parse("http://host/"), DeepLinkUri.parse("Http://host/"))
-        assertEquals(DeepLinkUri.parse("http://host/"), DeepLinkUri.parse("http://host/"))
-        assertEquals(DeepLinkUri.parse("http://host/"), DeepLinkUri.parse("HTTP://host/"))
-        assertEquals(DeepLinkUri.parse("https://host/"), DeepLinkUri.parse("https://host/"))
-        assertEquals(DeepLinkUri.parse("https://host/"), DeepLinkUri.parse("HTTPS://host/"))
+        assertEquals(parse("http://host/"), DeepLinkUri.parse("http://host/"))
+        assertEquals(parse("http://host/"), DeepLinkUri.parse("Http://host/"))
+        assertEquals(parse("http://host/"), DeepLinkUri.parse("http://host/"))
+        assertEquals(parse("http://host/"), DeepLinkUri.parse("HTTP://host/"))
+        assertEquals(parse("https://host/"), DeepLinkUri.parse("https://host/"))
+        assertEquals(parse("https://host/"), DeepLinkUri.parse("HTTPS://host/"))
 
-        assertEquals(DeepLinkUri.parse("image640://480.png"), DeepLinkUri.parse("image640://480.png"))
-        assertEquals(DeepLinkUri.parse("httpp://host/"), DeepLinkUri.parse("httpp://host/"))
-        assertEquals(DeepLinkUri.parse("ht+tp://host/"), DeepLinkUri.parse("ht+tp://host/"))
-        assertEquals(DeepLinkUri.parse("ht.tp://host/"), DeepLinkUri.parse("ht.tp://host/"))
-        assertEquals(DeepLinkUri.parse("ht-tp://host/"), DeepLinkUri.parse("ht-tp://host/"))
-        assertEquals(DeepLinkUri.parse("ht1tp://host/"), DeepLinkUri.parse("ht1tp://host/"))
-        assertEquals(DeepLinkUri.parse("httpss://host/"), DeepLinkUri.parse("httpss://host/"))
+        assertEquals(parse("image640://480.png"), DeepLinkUri.parse("image640://480.png"))
+        assertEquals(parse("httpp://host/"), DeepLinkUri.parse("httpp://host/"))
+        assertEquals(parse("ht+tp://host/"), DeepLinkUri.parse("ht+tp://host/"))
+        assertEquals(parse("ht.tp://host/"), DeepLinkUri.parse("ht.tp://host/"))
+        assertEquals(parse("ht-tp://host/"), DeepLinkUri.parse("ht-tp://host/"))
+        assertEquals(parse("ht1tp://host/"), DeepLinkUri.parse("ht1tp://host/"))
+        assertEquals(parse("httpss://host/"), DeepLinkUri.parse("httpss://host/"))
 
-        assertFailsWith<IllegalArgumentException>("Invalid URL: MISSING_SCHEME for 0ttp://host/") {
-            DeepLinkUri.parse("0ttp://host/")
-        }
+        assertInvalid("0ttp://host/", "Expected URL scheme 'http' or 'https' but no colon was found")
     }
 
     @Test
-    fun parseOrNullNoScheme() {
-        assertEquals(null, DeepLinkUri.parseOrNull("//host"))
-        assertEquals(null, DeepLinkUri.parseOrNull("/path"))
-        assertEquals(null, DeepLinkUri.parseOrNull("path"))
-        assertEquals(null, DeepLinkUri.parseOrNull("?query"))
-        assertEquals(null, DeepLinkUri.parseOrNull("#fragment"))
+    fun parseNoScheme() {
+        assertInvalid("//host", "Expected URL scheme 'http' or 'https' but no colon was found")
+        assertInvalid("/path", "Expected URL scheme 'http' or 'https' but no colon was found")
+        assertInvalid("path", "Expected URL scheme 'http' or 'https' but no colon was found")
+        assertInvalid("?query", "Expected URL scheme 'http' or 'https' but no colon was found")
+        assertInvalid("#fragment", "Expected URL scheme 'http' or 'https' but no colon was found")
+    }
+
+    @Test
+    fun newBuilderResolve() {
+        // Non-exhaustive tests because implementation is the same as resolve.
+        val base = DeepLinkUri.parse("http://host/a/b")
+        assertEquals(parse("https://host2/"), base.resolve("https://host2"))
+        assertEquals(parse("http://host2/"), base.resolve("//host2"))
+        assertEquals(parse("http://host/path"), base.resolve("/path"))
+        assertEquals(parse("http://host/a/path"), base.resolve("path"))
+        assertEquals(parse("http://host/a/b?query"), base.resolve("?query"))
+        assertEquals(parse("http://host/a/b#fragment"), base.resolve("#fragment"))
+        assertEquals(parse("http://host/a/b"), base.resolve(""))
+
+        assertEquals(parse("ftp://b"), base.resolve("ftp://b"))
+        assertEquals(parse("ht+tp://b"), base.resolve("ht+tp://b"))
+        assertEquals(parse("ht-tp://b"), base.resolve("ht-tp://b"))
+        assertEquals(parse("ht.tp://b"), base.resolve("ht.tp://b"))
     }
 
     @Test
     fun resolveNoScheme() {
         val base = DeepLinkUri.parse("http://host/a/b")
-        assertEquals(DeepLinkUri.parse("http://host2/"), base.resolve("//host2"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("/path"))
-        assertEquals(DeepLinkUri.parse("http://host/a/path"), base.resolve("path"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b?query"), base.resolve("?query"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b#fragment"), base.resolve("#fragment"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b"), base.resolve(""))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("\\path"))
+        assertEquals(parse("http://host2/"), base.resolve("//host2"))
+        assertEquals(parse("http://host/path"), base.resolve("/path"))
+        assertEquals(parse("http://host/a/path"), base.resolve("path"))
+        assertEquals(parse("http://host/a/b?query"), base.resolve("?query"))
+        assertEquals(parse("http://host/a/b#fragment"), base.resolve("#fragment"))
+        assertEquals(parse("http://host/a/b"), base.resolve(""))
+        assertEquals(parse("http://host/path"), base.resolve("\\path"))
     }
 
     @Test
     fun resolveCustomScheme() {
         val base = DeepLinkUri.parse("http://a/")
-        assertEquals(DeepLinkUri.parse("ftp://b"), base.resolve("ftp://b"))
-        assertEquals(DeepLinkUri.parse("ht+tp://b"), base.resolve("ht+tp://b"))
-        assertEquals(DeepLinkUri.parse("ht-tp://b"), base.resolve("ht-tp://b"))
-        assertEquals(DeepLinkUri.parse("ht.tp://b"), base.resolve("ht.tp://b"))
+        assertEquals(parse("ftp://b"), base.resolve("ftp://b"))
+        assertEquals(parse("ht+tp://b"), base.resolve("ht+tp://b"))
+        assertEquals(parse("ht-tp://b"), base.resolve("ht-tp://b"))
+        assertEquals(parse("ht.tp://b"), base.resolve("ht.tp://b"))
     }
 
     @Test
     fun resolveSchemeLikePath() {
         val base = DeepLinkUri.parse("http://a/")
-        assertEquals(DeepLinkUri.parse("http://a/http//b/"), base.resolve("http//b/"))
-        assertEquals(DeepLinkUri.parse("http://a/ht+tp//b/"), base.resolve("ht+tp//b/"))
-        assertEquals(DeepLinkUri.parse("http://a/ht-tp//b/"), base.resolve("ht-tp//b/"))
-        assertEquals(DeepLinkUri.parse("http://a/ht.tp//b/"), base.resolve("ht.tp//b/"))
+        assertEquals(parse("http://a/http//b/"), base.resolve("http//b/"))
+        assertEquals(parse("http://a/ht+tp//b/"), base.resolve("ht+tp//b/"))
+        assertEquals(parse("http://a/ht-tp//b/"), base.resolve("ht-tp//b/"))
+        assertEquals(parse("http://a/ht.tp//b/"), base.resolve("ht.tp//b/"))
+    }
+
+    /** https://tools.ietf.org/html/rfc3986#section-5.4.1  */
+    @Test
+    fun rfc3886NormalExamples() {
+        val url = DeepLinkUri.parse("http://a/b/c/d;p?q")
+        assertEquals(parse("g://h/"), url.resolve("g:h"))
+        assertEquals(parse("http://a/b/c/g"), url.resolve("g"))
+        assertEquals(parse("http://a/b/c/g"), url.resolve("./g"))
+        assertEquals(parse("http://a/b/c/g/"), url.resolve("g/"))
+        assertEquals(parse("http://a/g"), url.resolve("/g"))
+        assertEquals(parse("http://g"), url.resolve("//g"))
+        assertEquals(parse("http://a/b/c/d;p?y"), url.resolve("?y"))
+        assertEquals(parse("http://a/b/c/g?y"), url.resolve("g?y"))
+        assertEquals(parse("http://a/b/c/d;p?q#s"), url.resolve("#s"))
+        assertEquals(parse("http://a/b/c/g#s"), url.resolve("g#s"))
+        assertEquals(parse("http://a/b/c/g?y#s"), url.resolve("g?y#s"))
+        assertEquals(parse("http://a/b/c/;x"), url.resolve(";x"))
+        assertEquals(parse("http://a/b/c/g;x"), url.resolve("g;x"))
+        assertEquals(parse("http://a/b/c/g;x?y#s"), url.resolve("g;x?y#s"))
+        assertEquals(parse("http://a/b/c/d;p?q"), url.resolve(""))
+        assertEquals(parse("http://a/b/c/"), url.resolve("."))
+        assertEquals(parse("http://a/b/c/"), url.resolve("./"))
+        assertEquals(parse("http://a/b/"), url.resolve(".."))
+        assertEquals(parse("http://a/b/"), url.resolve("../"))
+        assertEquals(parse("http://a/b/g"), url.resolve("../g"))
+        assertEquals(parse("http://a/"), url.resolve("../.."))
+        assertEquals(parse("http://a/"), url.resolve("../../"))
+        assertEquals(parse("http://a/g"), url.resolve("../../g"))
+    }
+
+    /** https://tools.ietf.org/html/rfc3986#section-5.4.2  */
+    @Test
+    fun rfc3886AbnormalExamples() {
+        val url = DeepLinkUri.parse("http://a/b/c/d;p?q")
+        assertEquals(parse("http://a/g"), url.resolve("../../../g"))
+        assertEquals(parse("http://a/g"), url.resolve("../../../../g"))
+        assertEquals(parse("http://a/g"), url.resolve("/./g"))
+        assertEquals(parse("http://a/g"), url.resolve("/../g"))
+        assertEquals(parse("http://a/b/c/g."), url.resolve("g."))
+        assertEquals(parse("http://a/b/c/.g"), url.resolve(".g"))
+        assertEquals(parse("http://a/b/c/g.."), url.resolve("g.."))
+        assertEquals(parse("http://a/b/c/..g"), url.resolve("..g"))
+        assertEquals(parse("http://a/b/g"), url.resolve("./../g"))
+        assertEquals(parse("http://a/b/c/g/"), url.resolve("./g/."))
+        assertEquals(parse("http://a/b/c/g/h"), url.resolve("g/./h"))
+        assertEquals(parse("http://a/b/c/h"), url.resolve("g/../h"))
+        assertEquals(parse("http://a/b/c/g;x=1/y"), url.resolve("g;x=1/./y"))
+        assertEquals(parse("http://a/b/c/y"), url.resolve("g;x=1/../y"))
+        assertEquals(parse("http://a/b/c/g?y/./x"), url.resolve("g?y/./x"))
+        assertEquals(parse("http://a/b/c/g?y/../x"), url.resolve("g?y/../x"))
+        assertEquals(parse("http://a/b/c/g#s/./x"), url.resolve("g#s/./x"))
+        assertEquals(parse("http://a/b/c/g#s/../x"), url.resolve("g#s/../x"))
+        assertEquals(parse("http://a/b/c/g"), url.resolve("http:g")) // "http:g" also okay.
     }
 
     @Test
     fun parseAuthoritySlashCountDoesntMatter() {
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http://host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:/\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:///host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:\\//host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:/\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http://\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:\\\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:/\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:\\\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http:////host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:/host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:\\host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http://host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:\\/host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:/\\host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:\\\\host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:///host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:\\//host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:/\\/host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http://\\host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:\\\\/host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:/\\\\host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:\\\\\\host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http:////host/path"))
     }
 
     @Test
     fun resolveAuthoritySlashCountDoesntMatterWithDifferentScheme() {
         val base = DeepLinkUri.parse("https://a/b/c")
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http://host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:///host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\//host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http://\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:////host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http://host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:///host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\//host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/\\/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http://\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\\\/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/\\\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\\\\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:////host/path"))
     }
 
     @Test
     fun resolveAuthoritySlashCountMattersWithSameScheme() {
         val base = DeepLinkUri.parse("http://a/b/c")
-        assertEquals(DeepLinkUri.parse("http://a/b/host/path"), base.resolve("http:host/path"))
-        assertEquals(DeepLinkUri.parse("http://a/host/path"), base.resolve("http:/host/path"))
-        assertEquals(DeepLinkUri.parse("http://a/host/path"), base.resolve("http:\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http://host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:///host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\//host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http://\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\\\/host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:/\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:\\\\\\host/path"))
-        assertEquals(DeepLinkUri.parse("http://host/path"), base.resolve("http:////host/path"))
+        assertEquals(parse("http://a/b/host/path"), base.resolve("http:host/path"))
+        assertEquals(parse("http://a/host/path"), base.resolve("http:/host/path"))
+        assertEquals(parse("http://a/host/path"), base.resolve("http:\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http://host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:///host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\//host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/\\/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http://\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\\\/host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:/\\\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:\\\\\\host/path"))
+        assertEquals(parse("http://host/path"), base.resolve("http:////host/path"))
     }
 
     @Test
     fun username() {
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http://@host/path"))
-        assertEquals(DeepLinkUri.parse("http://user@host/path"), DeepLinkUri.parse("http://user@host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http://@host/path"))
+        assertEquals(parse("http://user@host/path"), DeepLinkUri.parse("http://user@host/path"))
     }
 
     /** Given multiple '@' characters, the last one is the delimiter.  */
@@ -220,7 +297,7 @@ class DeepLinkUriTest {
         val deepLinkUri = DeepLinkUri.parse("http://foo@bar@baz/path")
         assertEquals("foo@bar", deepLinkUri.username())
         assertEquals("", deepLinkUri.password())
-        assertEquals(DeepLinkUri.parse("http://foo%40bar@baz/path"), deepLinkUri)
+        assertEquals(parse("http://foo%40bar@baz/path"), deepLinkUri)
     }
 
     /** Given multiple ':' characters, the first one is the delimiter.  */
@@ -229,17 +306,17 @@ class DeepLinkUriTest {
         val deepLinkUri = DeepLinkUri.parse("http://foo:pass1@bar:pass2@baz/path")
         assertEquals("foo", deepLinkUri.username())
         assertEquals("pass1@bar:pass2", deepLinkUri.password())
-        assertEquals(DeepLinkUri.parse("http://foo:pass1%40bar%3Apass2@baz/path"), deepLinkUri)
+        assertEquals(parse("http://foo:pass1%40bar%3Apass2@baz/path"), deepLinkUri)
     }
 
     @Test
     fun usernameAndPassword() {
         assertEquals(
-            DeepLinkUri.parse("http://username:password@host/path"),
+            parse("http://username:password@host/path"),
             DeepLinkUri.parse("http://username:password@host/path")
         )
         assertEquals(
-            DeepLinkUri.parse("http://username@host/path"),
+            parse("http://username@host/path"),
             DeepLinkUri.parse("http://username:@host/path")
         )
     }
@@ -247,7 +324,7 @@ class DeepLinkUriTest {
     @Test
     fun passwordWithEmptyUsername() {
         // Chrome doesn't mind, but Firefox rejects URLs with empty usernames and non-empty passwords.
-        assertEquals(DeepLinkUri.parse("http://host/path"), DeepLinkUri.parse("http://:@host/path"))
+        assertEquals(parse("http://host/path"), DeepLinkUri.parse("http://:@host/path"))
         assertEquals("password%40", DeepLinkUri.parse("http://:password@@host/path").encodedPassword())
     }
 
@@ -260,9 +337,9 @@ class DeepLinkUriTest {
 
     @Test
     fun hostContainsIllegalCharacter() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://\n/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http:// /"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://%20/"))
+        assertInvalid("http://\n/", "Invalid URL host: \"\n\"")
+        assertInvalid("http:// /", "Invalid URL host: \" \"")
+        assertInvalid("http://%20/", "Invalid URL host: \"%20\"")
     }
 
     @Test
@@ -302,7 +379,7 @@ class DeepLinkUriTest {
 
     @Test
     fun hostnameMappingLastDisallowedCodePoint() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://\uDBFF\uDFFF"))
+        assertInvalid("http://\uDBFF\uDFFF", "Invalid URL host: \"\uDBFF\uDFFF\"")
     }
 
     @Test
@@ -357,41 +434,83 @@ class DeepLinkUriTest {
 
     @Test
     fun hostIpv6AddressTooManyDigitsInGroup() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[00000:0000:0000:0000:0000:0000:0000:0001]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[::00001]"))
+        assertInvalid(
+            "http://[00000:0000:0000:0000:0000:0000:0000:0001]",
+            "Invalid URL host: \"[00000:0000:0000:0000:0000:0000:0000:0001]\""
+        )
+        assertInvalid("http://[::00001]", "Invalid URL host: \"[::00001]\"")
     }
 
     @Test
     fun hostIpv6AddressMisplacedColons() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[:0000:0000:0000:0000:0000:0000:0000:0001]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[:::0000:0000:0000:0000:0000:0000:0000:0001]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[:1]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[:::1]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0000:0000:0000:0000:0000:0000:0001:]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0000:0000:0000:0000:0000:0000:0000:0001:]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0000:0000:0000:0000:0000:0000:0000:0001::]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0000:0000:0000:0000:0000:0000:0000:0001:::]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[1:]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[1:::]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[1:::1]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[00000:0000:0000:0000::0000:0000:0000:0001]"))
+        assertInvalid(
+            "http://[:0000:0000:0000:0000:0000:0000:0000:0001]",
+            "Invalid URL host: \"[:0000:0000:0000:0000:0000:0000:0000:0001]\""
+        )
+        assertInvalid(
+            "http://[:::0000:0000:0000:0000:0000:0000:0000:0001]",
+            "Invalid URL host: \"[:::0000:0000:0000:0000:0000:0000:0000:0001]\""
+        )
+        assertInvalid("http://[:1]", "Invalid URL host: \"[:1]\"")
+        assertInvalid("http://[:::1]", "Invalid URL host: \"[:::1]\"")
+        assertInvalid(
+            "http://[0000:0000:0000:0000:0000:0000:0001:]",
+            "Invalid URL host: \"[0000:0000:0000:0000:0000:0000:0001:]\""
+        )
+        assertInvalid(
+            "http://[0000:0000:0000:0000:0000:0000:0000:0001:]",
+            "Invalid URL host: \"[0000:0000:0000:0000:0000:0000:0000:0001:]\""
+        )
+        assertInvalid(
+            "http://[0000:0000:0000:0000:0000:0000:0000:0001::]",
+            "Invalid URL host: \"[0000:0000:0000:0000:0000:0000:0000:0001::]\""
+        )
+        assertInvalid(
+            "http://[0000:0000:0000:0000:0000:0000:0000:0001:::]",
+            "Invalid URL host: \"[0000:0000:0000:0000:0000:0000:0000:0001:::]\""
+        )
+        assertInvalid("http://[1:]", "Invalid URL host: \"[1:]\"")
+        assertInvalid("http://[1:::]", "Invalid URL host: \"[1:::]\"")
+        assertInvalid("http://[1:::1]", "Invalid URL host: \"[1:::1]\"")
+        assertInvalid(
+            "http://[0000:0000:0000:0000::0000:0000:0000:0001]",
+            "Invalid URL host: \"[0000:0000:0000:0000::0000:0000:0000:0001]\""
+        )
     }
 
     @Test
     fun hostIpv6AddressTooManyGroups() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[00000:0000:0000:0000:0000:0000:0000:0000:0001]"))
+        assertInvalid(
+            "http://[0000:0000:0000:0000:0000:0000:0000:0000:0001]",
+            "Invalid URL host: \"[0000:0000:0000:0000:0000:0000:0000:0000:0001]\""
+        )
     }
 
     @Test
     fun hostIpv6AddressTooMuchCompression() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0000::0000:0000:0000:0000::0001]"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[::0000:0000:0000:0000::0001]"))
+        assertInvalid(
+            "http://[0000::0000:0000:0000:0000::0001]",
+            "Invalid URL host: \"[0000::0000:0000:0000:0000::0001]\""
+        )
+        assertInvalid(
+            "http://[::0000:0000:0000:0000::0001]",
+            "Invalid URL host: \"[::0000:0000:0000:0000::0001]\""
+        )
     }
 
     @Test
     fun hostIpv6ScopedAddress() {
-        // java.net.InetAddress parseOrNulls scoped addresses. These aren't valid in URLs.
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[::1%2544]"))
+        // java.net.InetAddress parses scoped addresses. These aren't valid in URLs.
+        assertInvalid("http://[::1%2544]", "Invalid URL host: \"[::1%2544]\"")
+    }
+
+    @Test
+    fun hostIpv6AddressTooManyLeadingZeros() {
+        // Guava's been buggy on this case. https://github.com/google/guava/issues/3116
+        assertInvalid(
+            "http://[2001:db8:0:0:1:0:0:00001]",
+            "Invalid URL host: \"[2001:db8:0:0:1:0:0:00001]\""
+        )
     }
 
     @Test
@@ -403,39 +522,89 @@ class DeepLinkUriTest {
     @Test
     fun hostIpv6WithIpv4SuffixWithOctalPrefix() {
         // Chrome interprets a leading '0' as octal; Firefox rejects them. (We reject them.)
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:0.0.0.000000]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:0.010.0.010]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:0.0.0.000001]/"))
+        assertInvalid(
+            "http://[0:0:0:0:0:1:0.0.0.000000]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:0.0.0.000000]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:0.010.0.010]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:0.010.0.010]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:0.0.0.000001]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:0.0.0.000001]\""
+        )
     }
 
     @Test
     fun hostIpv6WithIpv4SuffixWithHexadecimalPrefix() {
         // Chrome interprets a leading '0x' as hexadecimal; Firefox rejects them. (We reject them.)
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:0.0x10.0.0x10]/"))
+        assertInvalid(
+            "http://[0:0:0:0:0:1:0.0x10.0.0x10]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:0.0x10.0.0x10]\""
+        )
     }
 
     @Test
     fun hostIpv6WithMalformedIpv4Suffix() {
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:0.0:0.0]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:0.0-0.0]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:.255.255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:255..255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:255.255..255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:0:1:255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:256.255.255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:ff.255.255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:0:1:255.255.255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:1:255.255.255.255]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:1:0.0.0.0:1]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0.0.0.0:1:0:0:0:0:1]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0.0.0.0:0:0:0:0:0:1]/"))
+        assertInvalid("http://[0:0:0:0:0:1:0.0:0.0]/", "Invalid URL host: \"[0:0:0:0:0:1:0.0:0.0]\"")
+        assertInvalid("http://[0:0:0:0:0:1:0.0-0.0]/", "Invalid URL host: \"[0:0:0:0:0:1:0.0-0.0]\"")
+        assertInvalid(
+            "http://[0:0:0:0:0:1:.255.255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:.255.255.255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:255..255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:255..255.255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:255.255..255]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:255.255..255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:0:1:255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:0:1:255.255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:256.255.255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:256.255.255.255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:ff.255.255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:ff.255.255.255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:0:1:255.255.255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:0:1:255.255.255.255]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:1:255.255.255.255]/",
+            "Invalid URL host: \"[0:0:0:0:1:255.255.255.255]\""
+        )
+        assertInvalid("http://[0:0:0:0:1:0.0.0.0:1]/", "Invalid URL host: \"[0:0:0:0:1:0.0.0.0:1]\"")
+        assertInvalid(
+            "http://[0:0.0.0.0:1:0:0:0:0:1]/",
+            "Invalid URL host: \"[0:0.0.0.0:1:0:0:0:0:1]\""
+        )
+        assertInvalid("http://[0.0.0.0:0:0:0:0:0:1]/", "Invalid URL host: \"[0.0.0.0:0:0:0:0:0:1]\"")
     }
 
     @Test
     fun hostIpv6WithIncompleteIpv4Suffix() {
         // To Chrome & Safari these are well-formed; Firefox disagrees. (We're consistent with Firefox).
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:255.255.255.]/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://[0:0:0:0:0:1:255.255.255]/"))
+        assertInvalid(
+            "http://[0:0:0:0:0:1:255.255.255.]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:255.255.255.]\""
+        )
+        assertInvalid(
+            "http://[0:0:0:0:0:1:255.255.255]/",
+            "Invalid URL host: \"[0:0:0:0:0:1:255.255.255]\""
+        )
+    }
+
+    @Test
+    fun hostIpv6Malformed() {
+        assertInvalid("http://[::g]/", "Invalid URL host: \"[::g]\"")
     }
 
     @Test
@@ -450,12 +619,28 @@ class DeepLinkUriTest {
         assertEquals("a::b:0:0:0", DeepLinkUri.parse("http://[a:0:0:0:b:0:0:0]/").host())
         assertEquals("::a:b:0:0:0", DeepLinkUri.parse("http://[0:0:0:a:b:0:0:0]/").host())
         assertEquals("::a:0:0:0:b", DeepLinkUri.parse("http://[0:0:0:a:0:0:0:b]/").host())
-        assertEquals("::a:b:c:d:e:f:1", DeepLinkUri.parse("http://[0:a:b:c:d:e:f:1]/").host())
-        assertEquals("a:b:c:d:e:f:1::", DeepLinkUri.parse("http://[a:b:c:d:e:f:1:0]/").host())
+        assertEquals("0:a:b:c:d:e:f:1", DeepLinkUri.parse("http://[0:a:b:c:d:e:f:1]/").host())
+        assertEquals("a:b:c:d:e:f:1:0", DeepLinkUri.parse("http://[a:b:c:d:e:f:1:0]/").host())
         assertEquals("ff01::101", DeepLinkUri.parse("http://[FF01:0:0:0:0:0:0:101]/").host())
+        assertEquals("2001:db8::1", DeepLinkUri.parse("http://[2001:db8::1]/").host())
+        assertEquals("2001:db8::2:1", DeepLinkUri.parse("http://[2001:db8:0:0:0:0:2:1]/").host())
+        assertEquals("2001:db8:0:1:1:1:1:1", DeepLinkUri.parse("http://[2001:db8:0:1:1:1:1:1]/").host())
+        assertEquals("2001:db8::1:0:0:1", DeepLinkUri.parse("http://[2001:db8:0:0:1:0:0:1]/").host())
+        assertEquals("2001:0:0:1::1", DeepLinkUri.parse("http://[2001:0:0:1:0:0:0:1]/").host())
         assertEquals("1::", DeepLinkUri.parse("http://[1:0:0:0:0:0:0:0]/").host())
         assertEquals("::1", DeepLinkUri.parse("http://[0:0:0:0:0:0:0:1]/").host())
         assertEquals("::", DeepLinkUri.parse("http://[0:0:0:0:0:0:0:0]/").host())
+        assertEquals("192.168.1.254", DeepLinkUri.parse("http://[::ffff:c0a8:1fe]/").host())
+    }
+
+    /** The builder permits square braces but does not require them.  */
+    @Test
+    fun hostIpv6Builder() {
+        val base = DeepLinkUri.parse("http://example.com/")
+        assertEquals("http://[::1]/", base.newBuilder().host("[::1]").build().toString())
+        assertEquals("http://[::1]/", base.newBuilder().host("[::0001]").build().toString())
+        assertEquals("http://[::1]/", base.newBuilder().host("::1").build().toString())
+        assertEquals("http://[::1]/", base.newBuilder().host("::0001").build().toString())
     }
 
     @Test
@@ -465,7 +650,6 @@ class DeepLinkUriTest {
         assertEquals("0.0.0.0", DeepLinkUri.parse("http://0.0.0.0/").host())
     }
 
-    @Ignore("java.net.IDN strips trailing trailing dots on Java 7, but not on Java 8.")
     @Test
     fun hostWithTrailingDot() {
         assertEquals("host.", DeepLinkUri.parse("http://host./").host())
@@ -473,15 +657,15 @@ class DeepLinkUriTest {
 
     @Test
     fun port() {
-        assertEquals(DeepLinkUri.parse("http://host/"), DeepLinkUri.parse("http://host:80/"))
-        assertEquals(DeepLinkUri.parse("http://host:99/"), DeepLinkUri.parse("http://host:99/"))
-        assertEquals(DeepLinkUri.parse("http://host/"), DeepLinkUri.parse("http://host:/"))
+        assertEquals(parse("http://host/"), DeepLinkUri.parse("http://host:80/"))
+        assertEquals(parse("http://host:99/"), DeepLinkUri.parse("http://host:99/"))
+        assertEquals(parse("http://host/"), DeepLinkUri.parse("http://host:/"))
         assertEquals(65535, DeepLinkUri.parse("http://host:65535/").port().toLong())
-        assertEquals(null, DeepLinkUri.parseOrNull("http://host:0/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://host:65536/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://host:-1/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://host:a/"))
-        assertEquals(null, DeepLinkUri.parseOrNull("http://host:%39%39/"))
+        assertInvalid("http://host:0/", "Invalid URL port: \"0\"")
+        assertInvalid("http://host:65536/", "Invalid URL port: \"65536\"")
+        assertInvalid("http://host:-1/", "Invalid URL port: \"-1\"")
+        assertInvalid("http://host:a/", "Invalid URL port: \"a\"")
+        assertInvalid("http://host:%39%39/", "Invalid URL port: \"%39%39\"")
     }
 
     @Test
@@ -499,13 +683,7 @@ class DeepLinkUriTest {
         assertEquals("http://host/#\u0080", url.toString())
         assertEquals("\u0080", url.fragment())
         assertEquals("\u0080", url.encodedFragment())
-        try {
-            url.uri()
-            fail()
-        } catch (expected: IllegalStateException) {
-            // Possibly a bug in java.net.URI. Many non-ASCII code points work, this one doesn't!
-        }
-
+        assertEquals(URI("http://host/#"), url.uri()) // Control characters may be stripped!
     }
 
     @Test
@@ -529,55 +707,55 @@ class DeepLinkUriTest {
     @Test
     fun relativePath() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        assertEquals(DeepLinkUri.parse("http://host/a/b/d/e/f"), base.resolve("d/e/f"))
-        assertEquals(DeepLinkUri.parse("http://host/d/e/f"), base.resolve("../../d/e/f"))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve(".."))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../.."))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../../.."))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/"), base.resolve("."))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("././.."))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/c/"), base.resolve("c/d/../e/../"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/..e/"), base.resolve("..e/"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/e/f../"), base.resolve("e/f../"))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("%2E."))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve(".%2E"))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("%2E%2E"))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("%2e."))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve(".%2e"))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("%2e%2e"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/"), base.resolve("%2E"))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/"), base.resolve("%2e"))
+        assertEquals(parse("http://host/a/b/d/e/f"), base.resolve("d/e/f"))
+        assertEquals(parse("http://host/d/e/f"), base.resolve("../../d/e/f"))
+        assertEquals(parse("http://host/a/"), base.resolve(".."))
+        assertEquals(parse("http://host/"), base.resolve("../.."))
+        assertEquals(parse("http://host/"), base.resolve("../../.."))
+        assertEquals(parse("http://host/a/b/"), base.resolve("."))
+        assertEquals(parse("http://host/a/"), base.resolve("././.."))
+        assertEquals(parse("http://host/a/b/c/"), base.resolve("c/d/../e/../"))
+        assertEquals(parse("http://host/a/b/..e/"), base.resolve("..e/"))
+        assertEquals(parse("http://host/a/b/e/f../"), base.resolve("e/f../"))
+        assertEquals(parse("http://host/a/"), base.resolve("%2E."))
+        assertEquals(parse("http://host/a/"), base.resolve(".%2E"))
+        assertEquals(parse("http://host/a/"), base.resolve("%2E%2E"))
+        assertEquals(parse("http://host/a/"), base.resolve("%2e."))
+        assertEquals(parse("http://host/a/"), base.resolve(".%2e"))
+        assertEquals(parse("http://host/a/"), base.resolve("%2e%2e"))
+        assertEquals(parse("http://host/a/b/"), base.resolve("%2E"))
+        assertEquals(parse("http://host/a/b/"), base.resolve("%2e"))
     }
 
     @Test
     fun relativePathWithTrailingSlash() {
         val base = DeepLinkUri.parse("http://host/a/b/c/")
-        assertEquals(DeepLinkUri.parse("http://host/a/b/"), base.resolve(".."))
-        assertEquals(DeepLinkUri.parse("http://host/a/b/"), base.resolve("../"))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("../.."))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("../../"))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../../.."))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../../../"))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../../../.."))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../../../../"))
-        assertEquals(DeepLinkUri.parse("http://host/a"), base.resolve("../../../../a"))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("../../../../a/.."))
-        assertEquals(DeepLinkUri.parse("http://host/a/"), base.resolve("../../../../a/b/.."))
+        assertEquals(parse("http://host/a/b/"), base.resolve(".."))
+        assertEquals(parse("http://host/a/b/"), base.resolve("../"))
+        assertEquals(parse("http://host/a/"), base.resolve("../.."))
+        assertEquals(parse("http://host/a/"), base.resolve("../../"))
+        assertEquals(parse("http://host/"), base.resolve("../../.."))
+        assertEquals(parse("http://host/"), base.resolve("../../../"))
+        assertEquals(parse("http://host/"), base.resolve("../../../.."))
+        assertEquals(parse("http://host/"), base.resolve("../../../../"))
+        assertEquals(parse("http://host/a"), base.resolve("../../../../a"))
+        assertEquals(parse("http://host/"), base.resolve("../../../../a/.."))
+        assertEquals(parse("http://host/a/"), base.resolve("../../../../a/b/.."))
     }
 
     @Test
     fun pathWithBackslash() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        assertEquals(DeepLinkUri.parse("http://host/a/b/d/e/f"), base.resolve("d\\e\\f"))
-        assertEquals(DeepLinkUri.parse("http://host/d/e/f"), base.resolve("../..\\d\\e\\f"))
-        assertEquals(DeepLinkUri.parse("http://host/"), base.resolve("..\\.."))
+        assertEquals(parse("http://host/a/b/d/e/f"), base.resolve("d\\e\\f"))
+        assertEquals(parse("http://host/d/e/f"), base.resolve("../..\\d\\e\\f"))
+        assertEquals(parse("http://host/"), base.resolve("..\\.."))
     }
 
     @Test
     fun relativePathWithSameScheme() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        assertEquals(DeepLinkUri.parse("http://host/a/b/d/e/f"), base.resolve("http:d/e/f"))
-        assertEquals(DeepLinkUri.parse("http://host/d/e/f"), base.resolve("http:../../d/e/f"))
+        assertEquals(parse("http://host/a/b/d/e/f"), base.resolve("http:d/e/f"))
+        assertEquals(parse("http://host/d/e/f"), base.resolve("http:../../d/e/f"))
     }
 
     @Test
@@ -596,7 +774,7 @@ class DeepLinkUriTest {
     @Test
     fun decodeSlashCharacterInDecodedPathSegment() {
         assertEquals(
-            listOf("a/b/c"),
+            Arrays.asList("a/b/c"),
             DeepLinkUri.parse("http://host/a%2Fb%2Fc").pathSegments()
         )
     }
@@ -604,7 +782,7 @@ class DeepLinkUriTest {
     @Test
     fun decodeEmptyPathSegments() {
         assertEquals(
-            listOf(""),
+            Arrays.asList(""),
             DeepLinkUri.parse("http://host/").pathSegments()
         )
     }
@@ -612,27 +790,27 @@ class DeepLinkUriTest {
     @Test
     fun percentDecode() {
         assertEquals(
-            listOf("\u0000"),
+            Arrays.asList("\u0000"),
             DeepLinkUri.parse("http://host/%00").pathSegments()
         )
         assertEquals(
-            listOf("a", "\u2603", "c"),
+            Arrays.asList("a", "\u2603", "c"),
             DeepLinkUri.parse("http://host/a/%E2%98%83/c").pathSegments()
         )
         assertEquals(
-            listOf("a", "\uD83C\uDF69", "c"),
+            Arrays.asList("a", "\uD83C\uDF69", "c"),
             DeepLinkUri.parse("http://host/a/%F0%9F%8D%A9/c").pathSegments()
         )
         assertEquals(
-            listOf("a", "b", "c"),
+            Arrays.asList("a", "b", "c"),
             DeepLinkUri.parse("http://host/a/%62/c").pathSegments()
         )
         assertEquals(
-            listOf("a", "z", "c"),
+            Arrays.asList("a", "z", "c"),
             DeepLinkUri.parse("http://host/a/%7A/c").pathSegments()
         )
         assertEquals(
-            listOf("a", "z", "c"),
+            Arrays.asList("a", "z", "c"),
             DeepLinkUri.parse("http://host/a/%7a/c").pathSegments()
         )
     }
@@ -640,19 +818,19 @@ class DeepLinkUriTest {
     @Test
     fun malformedPercentEncoding() {
         assertEquals(
-            listOf("a%f", "b"),
+            Arrays.asList("a%f", "b"),
             DeepLinkUri.parse("http://host/a%f/b").pathSegments()
         )
         assertEquals(
-            listOf("%", "b"),
+            Arrays.asList("%", "b"),
             DeepLinkUri.parse("http://host/%/b").pathSegments()
         )
         assertEquals(
-            listOf("%"),
+            Arrays.asList("%"),
             DeepLinkUri.parse("http://host/%").pathSegments()
         )
         assertEquals(
-            listOf("%00"),
+            Arrays.asList("%00"),
             DeepLinkUri.parse("http://github.com/%%30%30").pathSegments()
         )
     }
@@ -661,7 +839,7 @@ class DeepLinkUriTest {
     fun malformedUtf8Encoding() {
         // Replace a partial UTF-8 sequence with the Unicode replacement character.
         assertEquals(
-            listOf("a", "\ufffdx", "c"),
+            Arrays.asList("a", "\ufffdx", "c"),
             DeepLinkUri.parse("http://host/a/%E2%98x/c").pathSegments()
         )
     }
@@ -685,6 +863,27 @@ class DeepLinkUriTest {
     }
 
     @Test
+    fun builderToString() {
+        assertEquals("https://host.com/path", DeepLinkUri.parse("https://host.com/path").newBuilder().toString())
+    }
+
+    @Test
+    fun incompleteBuilderToString() {
+        assertEquals(
+            "https:///path",
+            DeepLinkUri.Builder().scheme("https").encodedPath("/path").toString()
+        )
+        assertEquals(
+            "//host.com/path",
+            DeepLinkUri.Builder().host("host.com").encodedPath("/path").toString()
+        )
+        assertEquals(
+            "//host.com:8080/path",
+            DeepLinkUri.Builder().host("host.com").encodedPath("/path").port(8080).toString()
+        )
+    }
+
+    @Test
     fun minimalUrlComposition() {
         val url = DeepLinkUri.Builder().scheme("http").host("host").build()
         assertEquals("http://host/", url.toString())
@@ -694,8 +893,8 @@ class DeepLinkUriTest {
         assertEquals("host", url.host())
         assertEquals(80, url.port().toLong())
         assertEquals("/", url.encodedPath())
-        assertEquals(null, url.query())
-        assertEquals(null, url.fragment())
+        assertNull(url.query())
+        assertNull(url.fragment())
     }
 
     @Test
@@ -786,7 +985,7 @@ class DeepLinkUriTest {
         assertEquals("http", url.scheme())
         assertEquals("a:\u0001@/\\?#%b", url.username())
         assertEquals("c:\u0001@/\\?#%d", url.password())
-        assertEquals(listOf("g:\u0001@/\\?#%h"), url.pathSegments())
+        assertEquals(Arrays.asList("g:\u0001@/\\?#%h"), url.pathSegments())
         assertEquals("i:\u0001@/\\?#%j", url.query())
         assertEquals("k:\u0001@/\\?#%l", url.fragment())
         assertEquals("a%3A%01%40%2F%5C%3F%23%25b", url.encodedUsername())
@@ -815,7 +1014,7 @@ class DeepLinkUriTest {
         assertEquals("http", url.scheme())
         assertEquals("a:\u0001@/\\?#%b", url.username())
         assertEquals("c:\u0001@/\\?#%d", url.password())
-        assertEquals(listOf("g:\u0001@/\\?#%h"), url.pathSegments())
+        assertEquals(Arrays.asList("g:\u0001@/\\?#%h"), url.pathSegments())
         assertEquals("i:\u0001@/\\?#%j", url.query())
         assertEquals("k:\u0001@/\\?#%l", url.fragment())
         assertEquals("a%3A%01%40%2F%5C%3F%23%25b", url.encodedUsername())
@@ -834,7 +1033,7 @@ class DeepLinkUriTest {
             .build()
         assertEquals("http://host/a%2Fb/c", url.toString())
         assertEquals("/a%2Fb/c", url.encodedPath())
-        assertEquals(listOf("a/b", "c"), url.pathSegments())
+        assertEquals(Arrays.asList("a/b", "c"), url.pathSegments())
     }
 
     @Test
@@ -848,8 +1047,8 @@ class DeepLinkUriTest {
             .build()
         assertEquals("http://host/a%2fb/c/d%2525e/f%25g", url.toString())
         assertEquals("/a%2fb/c/d%2525e/f%25g", url.encodedPath())
-        assertEquals(listOf("a%2fb", "c", "d%2525e", "f%25g"), url.encodedPathSegments())
-        assertEquals(listOf("a/b", "c", "d%25e", "f%g"), url.pathSegments())
+        assertEquals(Arrays.asList("a%2fb", "c", "d%2525e", "f%25g"), url.encodedPathSegments())
+        assertEquals(Arrays.asList("a/b", "c", "d%25e", "f%g"), url.pathSegments())
     }
 
     @Test
@@ -875,6 +1074,73 @@ class DeepLinkUriTest {
     fun pathSize() {
         assertEquals(1, DeepLinkUri.parse("http://host/").pathSize().toLong())
         assertEquals(3, DeepLinkUri.parse("http://host/a/b/c").pathSize().toLong())
+    }
+
+    @Test
+    fun addPathSegments() {
+        val base = DeepLinkUri.parse("http://host/a/b/c")
+
+        // Add a string with zero slashes: resulting URL gains one slash.
+        assertEquals("/a/b/c/", base.newBuilder().addPathSegments("").build().encodedPath())
+        assertEquals("/a/b/c/d", base.newBuilder().addPathSegments("d").build().encodedPath())
+
+        // Add a string with one slash: resulting URL gains two slashes.
+        assertEquals("/a/b/c//", base.newBuilder().addPathSegments("/").build().encodedPath())
+        assertEquals("/a/b/c/d/", base.newBuilder().addPathSegments("d/").build().encodedPath())
+        assertEquals("/a/b/c//d", base.newBuilder().addPathSegments("/d").build().encodedPath())
+
+        // Add a string with two slashes: resulting URL gains three slashes.
+        assertEquals("/a/b/c///", base.newBuilder().addPathSegments("//").build().encodedPath())
+        assertEquals("/a/b/c//d/", base.newBuilder().addPathSegments("/d/").build().encodedPath())
+        assertEquals("/a/b/c/d//", base.newBuilder().addPathSegments("d//").build().encodedPath())
+        assertEquals("/a/b/c///d", base.newBuilder().addPathSegments("//d").build().encodedPath())
+        assertEquals("/a/b/c/d/e/f", base.newBuilder().addPathSegments("d/e/f").build().encodedPath())
+    }
+
+    @Test
+    fun addPathSegmentsOntoTrailingSlash() {
+        val base = DeepLinkUri.parse("http://host/a/b/c/")
+
+        // Add a string with zero slashes: resulting URL gains zero slashes.
+        assertEquals("/a/b/c/", base.newBuilder().addPathSegments("").build().encodedPath())
+        assertEquals("/a/b/c/d", base.newBuilder().addPathSegments("d").build().encodedPath())
+
+        // Add a string with one slash: resulting URL gains one slash.
+        assertEquals("/a/b/c//", base.newBuilder().addPathSegments("/").build().encodedPath())
+        assertEquals("/a/b/c/d/", base.newBuilder().addPathSegments("d/").build().encodedPath())
+        assertEquals("/a/b/c//d", base.newBuilder().addPathSegments("/d").build().encodedPath())
+
+        // Add a string with two slashes: resulting URL gains two slashes.
+        assertEquals("/a/b/c///", base.newBuilder().addPathSegments("//").build().encodedPath())
+        assertEquals("/a/b/c//d/", base.newBuilder().addPathSegments("/d/").build().encodedPath())
+        assertEquals("/a/b/c/d//", base.newBuilder().addPathSegments("d//").build().encodedPath())
+        assertEquals("/a/b/c///d", base.newBuilder().addPathSegments("//d").build().encodedPath())
+        assertEquals("/a/b/c/d/e/f", base.newBuilder().addPathSegments("d/e/f").build().encodedPath())
+    }
+
+    @Test
+    fun addPathSegmentsWithBackslash() {
+        val base = DeepLinkUri.parse("http://host/")
+        assertEquals("/d/e", base.newBuilder().addPathSegments("d\\e").build().encodedPath())
+        assertEquals("/d/e", base.newBuilder().addEncodedPathSegments("d\\e").build().encodedPath())
+    }
+
+    @Test
+    fun addPathSegmentsWithEmptyPaths() {
+        val base = DeepLinkUri.parse("http://host/a/b/c")
+        assertEquals(
+            "/a/b/c//d/e///f",
+            base.newBuilder().addPathSegments("/d/e///f").build().encodedPath()
+        )
+    }
+
+    @Test
+    fun addEncodedPathSegments() {
+        val base = DeepLinkUri.parse("http://host/a/b/c")
+        assertEquals(
+            "/a/b/c/d/e/%20/",
+            base.newBuilder().addEncodedPathSegments("d/e/%20/\n").build().encodedPath()
+        )
     }
 
     @Test
@@ -946,10 +1212,9 @@ class DeepLinkUriTest {
     @Test
     fun setPathSegmentRejectsDot() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        try {
+
+        assertFailsWith<IllegalArgumentException> {
             base.newBuilder().setPathSegment(0, ".")
-            fail()
-        } catch (expected: IllegalArgumentException) {
         }
 
     }
@@ -957,10 +1222,9 @@ class DeepLinkUriTest {
     @Test
     fun setPathSegmentRejectsDotDot() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        try {
+
+        assertFailsWith<IllegalArgumentException> {
             base.newBuilder().setPathSegment(0, "..")
-            fail()
-        } catch (expected: IllegalArgumentException) {
         }
 
     }
@@ -974,10 +1238,8 @@ class DeepLinkUriTest {
 
     @Test
     fun setPathSegmentOutOfBounds() {
-        try {
+        assertFailsWith<IndexOutOfBoundsException> {
             DeepLinkUri.Builder().setPathSegment(1, "a")
-            fail()
-        } catch (expected: IndexOutOfBoundsException) {
         }
 
     }
@@ -994,21 +1256,18 @@ class DeepLinkUriTest {
     @Test
     fun setEncodedPathSegmentRejectsDot() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        try {
-            base.newBuilder().setEncodedPathSegment(0, ".")
-            fail()
-        } catch (expected: IllegalArgumentException) {
-        }
 
+        assertFailsWith<IllegalArgumentException> {
+            base.newBuilder().setEncodedPathSegment(0, ".")
+        }
     }
 
     @Test
     fun setEncodedPathSegmentRejectsDotAndIgnoredCharacter() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        try {
+
+        assertFailsWith<IllegalArgumentException> {
             base.newBuilder().setEncodedPathSegment(0, ".\n")
-            fail()
-        } catch (expected: IllegalArgumentException) {
         }
 
     }
@@ -1016,10 +1275,9 @@ class DeepLinkUriTest {
     @Test
     fun setEncodedPathSegmentRejectsDotDot() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        try {
+
+        assertFailsWith<IllegalArgumentException> {
             base.newBuilder().setEncodedPathSegment(0, "..")
-            fail()
-        } catch (expected: IllegalArgumentException) {
         }
 
     }
@@ -1027,10 +1285,9 @@ class DeepLinkUriTest {
     @Test
     fun setEncodedPathSegmentRejectsDotDotAndIgnoredCharacter() {
         val base = DeepLinkUri.parse("http://host/a/b/c")
-        try {
+
+        assertFailsWith<IllegalArgumentException> {
             base.newBuilder().setEncodedPathSegment(0, "..\n")
-            fail()
-        } catch (expected: IllegalArgumentException) {
         }
 
     }
@@ -1044,10 +1301,9 @@ class DeepLinkUriTest {
 
     @Test
     fun setEncodedPathSegmentOutOfBounds() {
-        try {
+        assertFailsWith<IndexOutOfBoundsException> {
             DeepLinkUri.Builder().setEncodedPathSegment(1, "a")
             fail()
-        } catch (expected: IndexOutOfBoundsException) {
         }
 
     }
@@ -1069,16 +1325,15 @@ class DeepLinkUriTest {
             .removePathSegment(0)
             .removePathSegment(0)
             .build()
-        assertEquals(listOf(""), url.pathSegments())
+        assertEquals(Arrays.asList(""), url.pathSegments())
         assertEquals("/", url.encodedPath())
     }
 
     @Test
     fun removePathSegmentOutOfBounds() {
-        try {
+        assertFailsWith<IndexOutOfBoundsException> {
             DeepLinkUri.Builder().removePathSegment(1)
             fail()
-        } catch (expected: IndexOutOfBoundsException) {
         }
 
     }
@@ -1159,8 +1414,15 @@ class DeepLinkUriTest {
             .host("host")
             .addQueryParameter("=[]:;\"~|?#@^/$%*", "a")
             .build()
-        assertEquals("http://host/?%3D[]:;%22~|?%23@^/$%25*=a", url.toString())
-        assertEquals("http://host/?%3D[]:;%22~%7C?%23@%5E/$%25*=a", url.uri().toString())
+        assertEquals(
+            "http://host/?%3D%5B%5D%3A%3B%22%7E%7C%3F%23%40%5E%2F%24%25*=a",
+            url.toString()
+        )
+        assertEquals(
+            "http://host/?%3D%5B%5D%3A%3B%22%7E%7C%3F%23%40%5E%2F%24%25*=a",
+            url.uri().toString()
+        )
+        assertEquals("a", url.queryParameter("=[]:;\"~|?#@^/$%*"))
     }
 
     @Test
@@ -1170,8 +1432,15 @@ class DeepLinkUriTest {
             .host("host")
             .addQueryParameter("a", "=[]:;\"~|?#@^/$%*")
             .build()
-        assertEquals("http://host/?a=%3D[]:;%22~|?%23@^/$%25*", url.toString())
-        assertEquals("http://host/?a=%3D[]:;%22~%7C?%23@%5E/$%25*", url.uri().toString())
+        assertEquals(
+            "http://host/?a=%3D%5B%5D%3A%3B%22%7E%7C%3F%23%40%5E%2F%24%25*",
+            url.toString()
+        )
+        assertEquals(
+            "http://host/?a=%3D%5B%5D%3A%3B%22%7E%7C%3F%23%40%5E%2F%24%25*",
+            url.uri().toString()
+        )
+        assertEquals("=[]:;\"~|?#@^/$%*", url.queryParameter("a"))
     }
 
     @Test
@@ -1186,6 +1455,49 @@ class DeepLinkUriTest {
     }
 
     @Test
+    fun queryCharactersEncodedWhenComposed() {
+        val url = DeepLinkUri.Builder()
+            .scheme("http")
+            .host("host")
+            .addQueryParameter("a", "!$(),/:;?@[]\\^`{|}~")
+            .build()
+        assertEquals(
+            "http://host/?a=%21%24%28%29%2C%2F%3A%3B%3F%40%5B%5D%5C%5E%60%7B%7C%7D%7E",
+            url.toString()
+        )
+        assertEquals("!$(),/:;?@[]\\^`{|}~", url.queryParameter("a"))
+    }
+
+    /**
+     * When callers use `addEncodedQueryParameter()` we only encode what's strictly required.
+     * We retain the encoded (or non-encoded) state of the input.
+     */
+    @Test
+    fun queryCharactersNotReencodedWhenComposedWithAddEncoded() {
+        val url = DeepLinkUri.Builder()
+            .scheme("http")
+            .host("host")
+            .addEncodedQueryParameter("a", "!$(),/:;?@[]\\^`{|}~")
+            .build()
+        assertEquals(
+            "http://host/?a=!$(),/:;?@[]\\^`{|}~",
+            url.toString()
+        )
+        assertEquals("!$(),/:;?@[]\\^`{|}~", url.queryParameter("a"))
+    }
+
+    /**
+     * When callers parse a URL with query components that aren't encoded, we shouldn't convert them
+     * into a canonical form because doing so could be semantically different.
+     */
+    @Test
+    fun queryCharactersNotReencodedWhenParsed() {
+        val url = DeepLinkUri.parse("http://host/?a=!$(),/:;?@[]\\^`{|}~")
+        assertEquals("http://host/?a=!$(),/:;?@[]\\^`{|}~", url.toString())
+        assertEquals("!$(),/:;?@[]\\^`{|}~", url.queryParameter("a"))
+    }
+
+    @Test
     fun toUriFragmentSpecialCharacters() {
         val url = DeepLinkUri.Builder()
             .scheme("http")
@@ -1197,20 +1509,49 @@ class DeepLinkUriTest {
     }
 
     @Test
-    fun toUriWithMalformedPercentEscape() {
-        val url = DeepLinkUri.Builder()
-            .scheme("http")
-            .host("host")
-            .encodedPath("/%xx")
-            .build()
-        assertEquals("http://host/%xx", url.toString())
-        try {
-            url.uri()
-            fail()
-        } catch (expected: IllegalStateException) {
-            assertEquals("not valid as a java.net.URI: http://host/%xx", expected.message)
-        }
+    fun toUriWithControlCharacters() {
+        // Percent-encoded in the path.
+        assertEquals(URI("http://host/a%00b"), DeepLinkUri.parse("http://host/a\u0000b").uri())
+        assertEquals(URI("http://host/a%C2%80b"), DeepLinkUri.parse("http://host/a\u0080b").uri())
+        assertEquals(URI("http://host/a%C2%9Fb"), DeepLinkUri.parse("http://host/a\u009fb").uri())
+        // Percent-encoded in the query.
+        assertEquals(URI("http://host/?a%00b"), DeepLinkUri.parse("http://host/?a\u0000b").uri())
+        assertEquals(URI("http://host/?a%C2%80b"), DeepLinkUri.parse("http://host/?a\u0080b").uri())
+        assertEquals(URI("http://host/?a%C2%9Fb"), DeepLinkUri.parse("http://host/?a\u009fb").uri())
+        // Stripped from the fragment.
+        assertEquals(URI("http://host/#a%00b"), DeepLinkUri.parse("http://host/#a\u0000b").uri())
+        assertEquals(URI("http://host/#ab"), DeepLinkUri.parse("http://host/#a\u0080b").uri())
+        assertEquals(URI("http://host/#ab"), DeepLinkUri.parse("http://host/#a\u009fb").uri())
+    }
 
+    @Test
+    fun toUriWithSpaceCharacters() {
+        // Percent-encoded in the path.
+        assertEquals(URI("http://host/a%0Bb"), DeepLinkUri.parse("http://host/a\u000bb").uri())
+        assertEquals(URI("http://host/a%20b"), DeepLinkUri.parse("http://host/a b").uri())
+        assertEquals(URI("http://host/a%E2%80%89b"), DeepLinkUri.parse("http://host/a\u2009b").uri())
+        assertEquals(URI("http://host/a%E3%80%80b"), DeepLinkUri.parse("http://host/a\u3000b").uri())
+        // Percent-encoded in the query.
+        assertEquals(URI("http://host/?a%0Bb"), DeepLinkUri.parse("http://host/?a\u000bb").uri())
+        assertEquals(URI("http://host/?a%20b"), DeepLinkUri.parse("http://host/?a b").uri())
+        assertEquals(URI("http://host/?a%E2%80%89b"), DeepLinkUri.parse("http://host/?a\u2009b").uri())
+        assertEquals(URI("http://host/?a%E3%80%80b"), DeepLinkUri.parse("http://host/?a\u3000b").uri())
+        // Stripped from the fragment.
+        assertEquals(URI("http://host/#a%0Bb"), DeepLinkUri.parse("http://host/#a\u000bb").uri())
+        assertEquals(URI("http://host/#a%20b"), DeepLinkUri.parse("http://host/#a b").uri())
+        assertEquals(URI("http://host/#ab"), DeepLinkUri.parse("http://host/#a\u2009b").uri())
+        assertEquals(URI("http://host/#ab"), DeepLinkUri.parse("http://host/#a\u3000b").uri())
+    }
+
+    @Test
+    fun toUriWithNonHexPercentEscape() {
+        assertEquals(URI("http://host/%25xx"), DeepLinkUri.parse("http://host/%xx").uri())
+    }
+
+    @Test
+    fun toUriWithTruncatedPercentEscape() {
+        assertEquals(URI("http://host/%25a"), DeepLinkUri.parse("http://host/%a").uri())
+        assertEquals(URI("http://host/%25"), DeepLinkUri.parse("http://host/%").uri())
     }
 
     @Test
@@ -1218,6 +1559,12 @@ class DeepLinkUriTest {
         val javaNetUrl = URL("http://username:password@host/path?query#fragment")
         val deepLinkUri = DeepLinkUri.get(javaNetUrl)
         assertEquals("http://username:password@host/path?query#fragment", deepLinkUri.toString())
+    }
+
+    @Test
+    fun fromJavaNetUrlCustomScheme() {
+        val javaNetUrl = URL("mailto:user@example.com")
+        assertEquals(parse("mailto:user@example.com"), DeepLinkUri.get(javaNetUrl))
     }
 
     @Test
@@ -1230,27 +1577,13 @@ class DeepLinkUriTest {
     @Test
     fun fromUriCustomScheme() {
         val uri = URI("mailto:user@example.com")
-        assertEquals(DeepLinkUri.parse("mailto:user@example.com"), DeepLinkUri.get(uri))
+        assertEquals(parse("mailto:user@example.com"), DeepLinkUri.get(uri))
     }
 
     @Test
     fun fromUriPartial() {
         val uri = URI("/path")
-        assertFailsWith<IllegalArgumentException>("Invalid URL: MISSING_SCHEME for /path") {
-           DeepLinkUri.get(uri)
-        }
-    }
-
-    @Test
-    fun fromJavaNetUrl_checked() {
-        val deepLinkUri = DeepLinkUri.parse("http://username:password@host/path?query#fragment")
-        assertEquals("http://username:password@host/path?query#fragment", deepLinkUri.toString())
-    }
-
-    @Test
-    fun fromJavaNetUrlCustomScheme() {
-        assertEquals(DeepLinkUri.parse("mailto:user@example.com"), DeepLinkUri.parse("mailto:user@example.com"))
-
+        assertFailsWith<IllegalArgumentException> { (DeepLinkUri.get(uri)) }
     }
 
     @Test
@@ -1283,7 +1616,7 @@ class DeepLinkUriTest {
             .removeAllQueryParameters("a+=& b")
             .build()
         assertEquals("http://host/", url.toString())
-        assertEquals(null, url.queryParameter("a+=& b"))
+        assertNull(url.queryParameter("a+=& b"))
     }
 
     @Test
@@ -1293,7 +1626,7 @@ class DeepLinkUriTest {
             .removeAllEncodedQueryParameters("a+=& b")
             .build()
         assertEquals("http://host/", url.toString())
-        assertEquals(null, url.queryParameter("a =& b"))
+        assertNull(url.queryParameter("a =& b"))
     }
 
     @Test
@@ -1328,7 +1661,7 @@ class DeepLinkUriTest {
         )
         assertEquals(2, url.querySize().toLong())
         assertEquals(setOf("a+=& b"), url.queryParameterNames())
-        assertEquals(listOf("c+=& d", "e+=& f"), url.queryParameterValues("a+=& b"))
+        assertEquals(Arrays.asList("c+=& d", "e+=& f"), url.queryParameterValues("a+=& b"))
     }
 
     @Test
@@ -1346,7 +1679,7 @@ class DeepLinkUriTest {
             .build()
         assertEquals(1, url.querySize().toLong())
         assertEquals("", url.queryParameterName(0))
-        assertEquals(null, url.queryParameterValue(0))
+        assertNull(url.queryParameterValue(0))
     }
 
     @Test
@@ -1356,9 +1689,9 @@ class DeepLinkUriTest {
             .build()
         assertEquals(2, url.querySize().toLong())
         assertEquals("", url.queryParameterName(0))
-        assertEquals(null, url.queryParameterValue(0))
+        assertNull(url.queryParameterValue(0))
         assertEquals("", url.queryParameterName(1))
-        assertEquals(null, url.queryParameterValue(1))
+        assertNull(url.queryParameterValue(1))
     }
 
     @Test
@@ -1375,12 +1708,12 @@ class DeepLinkUriTest {
         val url = DeepLinkUri.parse("http://host/?foo&bar&baz")
         assertEquals(3, url.querySize().toLong())
         assertEquals(
-            LinkedHashSet(listOf("foo", "bar", "baz")),
+            LinkedHashSet(Arrays.asList("foo", "bar", "baz")),
             url.queryParameterNames()
         )
-        assertEquals(null, url.queryParameterValue(0))
-        assertEquals(null, url.queryParameterValue(1))
-        assertEquals(null, url.queryParameterValue(2))
+        assertNull(url.queryParameterValue(0))
+        assertNull(url.queryParameterValue(1))
+        assertNull(url.queryParameterValue(2))
         assertEquals(listOf<String?>(null), url.queryParameterValues("foo"))
         assertEquals(listOf<String?>(null), url.queryParameterValues("bar"))
         assertEquals(listOf<String?>(null), url.queryParameterValues("baz"))
@@ -1391,7 +1724,7 @@ class DeepLinkUriTest {
         val url = DeepLinkUri.parse("http://host/?foo=&bar=&baz=")
         assertEquals(3, url.querySize().toLong())
         assertEquals(
-            LinkedHashSet(listOf("foo", "bar", "baz")),
+            LinkedHashSet(Arrays.asList("foo", "bar", "baz")),
             url.queryParameterNames()
         )
         assertEquals("", url.queryParameterValue(0))
@@ -1410,7 +1743,7 @@ class DeepLinkUriTest {
         assertEquals("1", url.queryParameterValue(0))
         assertEquals("2", url.queryParameterValue(1))
         assertEquals("3", url.queryParameterValue(2))
-        assertEquals(listOf("1", "2", "3"), url.queryParameterValues("foo[]"))
+        assertEquals(Arrays.asList("1", "2", "3"), url.queryParameterValues("foo[]"))
     }
 
     @Test
@@ -1420,6 +1753,14 @@ class DeepLinkUriTest {
         assertEquals(" ", url.queryParameterName(1))
         assertEquals("m", url.queryParameter("m"))
         assertEquals(" ", url.queryParameter(" "))
+    }
+
+    @Test
+    fun parsedQueryDoesntIncludeFragment() {
+        val url = DeepLinkUri.parse("http://host/?#fragment")
+        assertEquals("fragment", url.fragment())
+        assertEquals("", url.query())
+        assertEquals("", url.encodedQuery())
     }
 
     @Test
@@ -1435,12 +1776,12 @@ class DeepLinkUriTest {
             .build()
         assertEquals("http://%25:%25@host/%25?%25#%25", url.toString())
         assertEquals("http://%25:%25@host/%25?%25#%25", url.newBuilder().build().toString())
-        assertEquals("http://%25:%25@host/%25?%25", url.resolve("").toString())
+        assertEquals("http://%25:%25@host/%25?%25", url.resolve("")!!.toString())
     }
 
     /**
-     * Although DeepLinkUri prefers percent-encodings in uppercase, it should preserve the exact
-     * structure of the original encoding.
+     * Although DeepLinkUri prefers percent-encodings in uppercase, it should preserve the exact structure
+     * of the original encoding.
      */
     @Test
     fun rawEncodingRetained() {
@@ -1449,12 +1790,12 @@ class DeepLinkUriTest {
         assertEquals("%6d%6D", url.encodedUsername())
         assertEquals("%6d%6D", url.encodedPassword())
         assertEquals("/%6d%6D", url.encodedPath())
-        assertEquals(listOf("%6d%6D"), url.encodedPathSegments())
+        assertEquals(Arrays.asList("%6d%6D"), url.encodedPathSegments())
         assertEquals("%6d%6D", url.encodedQuery())
         assertEquals("%6d%6D", url.encodedFragment())
         assertEquals(urlString, url.toString())
         assertEquals(urlString, url.newBuilder().build().toString())
-        assertEquals("http://%6d%6D:%6d%6D@host/%6d%6D?%6d%6D", url.resolve("").toString())
+        assertEquals("http://%6d%6D:%6d%6D@host/%6d%6D?%6d%6D", url.resolve("")!!.toString())
     }
 
     @Test
@@ -1464,8 +1805,8 @@ class DeepLinkUriTest {
             .fragment(null)
             .build()
         assertEquals("http://host/", url.toString())
-        assertEquals(null, url.fragment())
-        assertEquals(null, url.encodedFragment())
+        assertNull(url.fragment())
+        assertNull(url.encodedFragment())
     }
 
     @Test
@@ -1475,7 +1816,31 @@ class DeepLinkUriTest {
             .encodedFragment(null)
             .build()
         assertEquals("http://host/", url.toString())
-        assertEquals(null, url.fragment())
-        assertEquals(null, url.encodedFragment())
+        assertNull(url.fragment())
+        assertNull(url.encodedFragment())
+    }
+
+    private fun assertInvalid(string: String, exceptionMessage: String?) {
+        if (useGet) {
+            assertFailsWith<IllegalArgumentException>(exceptionMessage) {
+                DeepLinkUri.parse(string)
+            }
+
+        } else {
+            assertNull(DeepLinkUri.parseOrNull(string), string)
+        }
+    }
+
+    companion object {
+
+        @Suppress("unused")
+        @Parameterized.Parameters(name = "Use get = {0}")
+        @JvmStatic
+        fun parameters(): Collection<Array<Any>> {
+            return Arrays.asList(
+                arrayOf<Any>(true),
+                arrayOf<Any>(false)
+            )
+        }
     }
 }
