@@ -50,7 +50,7 @@ assertEquals("1234", stringResult)
 License
 -------
 
-    Copyright (C) 2019 The Hellofresh Android Chapter
+    Copyright (C) 2019 The Hellofresh Android Team
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
