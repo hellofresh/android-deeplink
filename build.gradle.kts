@@ -18,7 +18,6 @@ buildscript {
 
 plugins {
     id("io.gitlab.arturbosch.detekt") version Versions.detekt
-    id("com.vanniktech.android.junit.jacoco") version Versions.junitJacoco
 }
 
 allprojects {
@@ -35,9 +34,4 @@ tasks.withType<KotlinCompile>().configureEach {
 detekt {
     input = files("src/main/kotlin")
     filters = ".*/resources/.*,.*/build/.*"
-}
-
-junitJacoco {
-    jacocoVersion = "0.8.2"
-    excludes = Excludes.jacocoAndroid
 }

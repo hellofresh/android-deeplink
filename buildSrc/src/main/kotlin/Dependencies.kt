@@ -14,7 +14,9 @@ object Android {
 object Versions {
 
     const val androidGradlePlugin = "3.4.0-alpha10"
+    const val bintrayGradlePlugin = "1.8.4"
     const val detekt = "1.0.0-RC12"
+    const val dokkaAndroid = "0.9.17"
     const val junitJacoco = "0.13.0"
     const val junit = "4.12"
     const val kotlin = "1.3.11"
