@@ -86,13 +86,13 @@ class DeepLinkUri private constructor(builder: Builder) {
 
     init {
         this.scheme = checkNotNull(builder.scheme)
-        this.username = percentDecode(builder.encodedUsername)
-        this.password = percentDecode(builder.encodedPassword)
+        this.username = percentDecode(builder.encodedUsername, plusIsSpace = false)
+        this.password = percentDecode(builder.encodedPassword, plusIsSpace = false)
         this.host = checkNotNull(builder.host)
         this.port = builder.effectivePort()
-        this.pathSegments = percentDecode(builder.encodedPathSegments).filterNotNull()
-        this.queryNamesAndValues = builder.encodedQueryNamesAndValues?.let { percentDecode(it) }
-        this.fragment = builder.encodedFragment?.let { percentDecode(it) }
+        this.pathSegments = percentDecode(builder.encodedPathSegments, plusIsSpace = false).filterNotNull()
+        this.queryNamesAndValues = builder.encodedQueryNamesAndValues?.let { percentDecode(it, plusIsSpace = true) }
+        this.fragment = builder.encodedFragment?.let { percentDecode(it, plusIsSpace = false) }
         this.url = builder.toString()
     }
 
@@ -113,11 +113,17 @@ class DeepLinkUri private constructor(builder: Builder) {
      * the exact rules of what URLs are permitted.
      */
     fun uri(): URI {
-        try {
-            val uriSafeUrl = canonicalize(url, CONVERT_TO_URI_ENCODE_SET, alreadyEncoded = true, query = false)
-            return URI(uriSafeUrl)
+        val uri = newBuilder().reencodeForUri().toString()
+        return try {
+            URI(uri)
         } catch (e: URISyntaxException) {
-            throw IllegalStateException("not valid as a java.net.URI: $url")
+            // Unlikely edge case: the URI has a forbidden character in the fragment. Strip it & retry.
+            try {
+                val stripped = uri.replace("[\u0000-\u001F\u007F-\u009F\\p{javaWhitespace}]".toRegex(), "")
+                URI.create(stripped)
+            } catch (e1: Exception) {
+                throw RuntimeException(e) // Unexpected!
+            }
         }
 
     }
@@ -164,10 +170,6 @@ class DeepLinkUri private constructor(builder: Builder) {
      */
     fun host(): String {
         return host
-    }
-
-    fun encodedHost(): String {
-        return canonicalize(host, DeepLinkUri.CONVERT_TO_URI_ENCODE_SET, alreadyEncoded = true, query = true)
     }
 
     /**
@@ -218,7 +220,7 @@ class DeepLinkUri private constructor(builder: Builder) {
     fun encodedQuery(): String? {
         if (queryNamesAndValues == null) return null // No query.
         val queryStart = url.indexOf('?') + 1
-        val queryEnd = delimiterOffset(url, queryStart + 1, url.length, "#")
+        val queryEnd = delimiterOffset(url, queryStart, url.length, "#")
         return url.substring(queryStart, queryEnd)
     }
 
@@ -297,9 +299,7 @@ class DeepLinkUri private constructor(builder: Builder) {
 
     /** Returns the URL that would be retrieved by following `link` from this URL.  */
     fun resolve(link: String): DeepLinkUri? {
-        val builder = Builder()
-        val result = builder.parse(this, link)
-        return if (result == ParseResult.SUCCESS) builder.build() else null
+        return newBuilder(link)?.build()
     }
 
     fun newBuilder(): Builder {
@@ -308,12 +308,22 @@ class DeepLinkUri private constructor(builder: Builder) {
         result.encodedUsername = encodedUsername()
         result.encodedPassword = encodedPassword()
         result.host = host
-        result.port = port
+        result.port = if (port != defaultPort(scheme)) port else -1
         result.encodedPathSegments.clear()
         result.encodedPathSegments.addAll(encodedPathSegments())
         result.encodedQuery(encodedQuery())
         result.encodedFragment = encodedFragment()
         return result
+    }
+
+    /**
+     * Returns a builder for the URL that would be retrieved by following `link` from this URL,
+     * or null if the resulting URL is not well-formed.
+     */
+    fun newBuilder(link: String): Builder? {
+        val builder = Builder()
+        val result = builder.parse(this, link)
+        return if (result === Builder.ParseResult.SUCCESS) builder else null
     }
 
     override fun equals(other: Any?): Boolean {
@@ -343,28 +353,48 @@ class DeepLinkUri private constructor(builder: Builder) {
         }
 
         fun scheme(scheme: String): Builder = apply {
-            this.scheme = scheme
+            this.scheme = scheme.toLowerCase(Locale.US)
         }
 
         fun username(username: String): Builder = apply {
-            this.encodedUsername = canonicalize(username, USERNAME_ENCODE_SET, alreadyEncoded = false, query = false)
+            this.encodedUsername = canonicalize(
+                username,
+                USERNAME_ENCODE_SET,
+                alreadyEncoded = false,
+                strict = false,
+                plusIsSpace = false,
+                asciiOnly = true
+            )
         }
 
         fun encodedUsername(encodedUsername: String): Builder = apply {
-            this.encodedUsername = canonicalize(encodedUsername, USERNAME_ENCODE_SET,
+            this.encodedUsername = canonicalize(
+                encodedUsername, USERNAME_ENCODE_SET,
                 alreadyEncoded = true,
-                query = false
+                strict = false,
+                plusIsSpace = false,
+                asciiOnly = true
             )
         }
 
         fun password(password: String): Builder = apply {
-            this.encodedPassword = canonicalize(password, PASSWORD_ENCODE_SET, alreadyEncoded = false, query = false)
+            this.encodedPassword = canonicalize(
+                password,
+                PASSWORD_ENCODE_SET,
+                alreadyEncoded = false,
+                strict = false,
+                plusIsSpace = false,
+                asciiOnly = true
+            )
         }
 
         fun encodedPassword(encodedPassword: String): Builder = apply {
-            this.encodedPassword = canonicalize(encodedPassword, PASSWORD_ENCODE_SET,
+            this.encodedPassword = canonicalize(
+                encodedPassword, PASSWORD_ENCODE_SET,
                 alreadyEncoded = true,
-                query = false
+                strict = false,
+                plusIsSpace = false,
+                asciiOnly = true
             )
         }
 
@@ -395,9 +425,44 @@ class DeepLinkUri private constructor(builder: Builder) {
             push(encodedPathSegment, 0, encodedPathSegment.length, addTrailingSlash = false, alreadyEncoded = true)
         }
 
+
+        /**
+         * Adds a set of path segments separated by a slash (either `\` or `/`). If
+         * `pathSegments` starts with a slash, the resulting URL will have empty path segment.
+         */
+        fun addPathSegments(pathSegments: String): Builder {
+            return addPathSegments(pathSegments, false)
+        }
+
+        /**
+         * Adds a set of encoded path segments separated by a slash (either `\` or `/`). If
+         * `encodedPathSegments` starts with a slash, the resulting URL will have empty path
+         * segment.
+         */
+        fun addEncodedPathSegments(encodedPathSegments: String): Builder {
+            return addPathSegments(encodedPathSegments, true)
+        }
+
+        private fun addPathSegments(pathSegments: String, alreadyEncoded: Boolean): Builder = apply {
+            var offset = 0
+            do {
+                val segmentEnd = delimiterOffset(pathSegments, offset, pathSegments.length, "/\\")
+                val addTrailingSlash = segmentEnd < pathSegments.length
+                push(pathSegments, offset, segmentEnd, addTrailingSlash, alreadyEncoded)
+                offset = segmentEnd + 1
+            } while (offset <= pathSegments.length)
+        }
+
         fun setPathSegment(index: Int, pathSegment: String): Builder = apply {
             val canonicalPathSegment = canonicalize(
-                pathSegment, 0, pathSegment.length, PATH_SEGMENT_ENCODE_SET, alreadyEncoded = false, query = false
+                pathSegment,
+                0,
+                pathSegment.length,
+                PATH_SEGMENT_ENCODE_SET,
+                alreadyEncoded = false,
+                strict = false,
+                plusIsSpace = false,
+                asciiOnly = true
             )
             if (isDot(canonicalPathSegment) || isDotDot(canonicalPathSegment)) {
                 throw IllegalArgumentException("unexpected path segment: $pathSegment")
@@ -408,7 +473,13 @@ class DeepLinkUri private constructor(builder: Builder) {
         fun setEncodedPathSegment(index: Int, encodedPathSegment: String): Builder = apply {
             val canonicalPathSegment = canonicalize(
                 encodedPathSegment,
-                0, encodedPathSegment.length, PATH_SEGMENT_ENCODE_SET, alreadyEncoded = true, query = false
+                0,
+                encodedPathSegment.length,
+                PATH_SEGMENT_ENCODE_SET,
+                alreadyEncoded = true,
+                strict = false,
+                plusIsSpace = false,
+                asciiOnly = true
             )
             encodedPathSegments[index] = canonicalPathSegment
             if (isDot(canonicalPathSegment) || isDotDot(canonicalPathSegment)) {
@@ -432,17 +503,31 @@ class DeepLinkUri private constructor(builder: Builder) {
 
         fun query(query: String?): Builder = apply {
             this.encodedQueryNamesAndValues = if (query != null)
-                queryStringToNamesAndValues(canonicalize(query, QUERY_ENCODE_SET, alreadyEncoded = false, query = true))
+                queryStringToNamesAndValues(
+                    canonicalize(
+                        query,
+                        QUERY_ENCODE_SET,
+                        alreadyEncoded = false,
+                        strict = false,
+                        plusIsSpace = true,
+                        asciiOnly = true
+                    )
+                )
             else
                 null
         }
 
         fun encodedQuery(encodedQuery: String?): Builder = apply {
             this.encodedQueryNamesAndValues = if (encodedQuery != null)
-                queryStringToNamesAndValues(canonicalize(encodedQuery, QUERY_ENCODE_SET,
-                    alreadyEncoded = true,
-                    query = true
-                ))
+                queryStringToNamesAndValues(
+                    canonicalize(
+                        encodedQuery, QUERY_ENCODE_SET,
+                        alreadyEncoded = true,
+                        strict = false,
+                        plusIsSpace = true,
+                        asciiOnly = true
+                    )
+                )
             else
                 null
         }
@@ -452,10 +537,26 @@ class DeepLinkUri private constructor(builder: Builder) {
             val queries = encodedQueryNamesAndValues ?: arrayListOf<String?>().also {
                 encodedQueryNamesAndValues = it
             }
-            queries.add(canonicalize(name, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = false, query = true))
+            queries.add(
+                canonicalize(
+                    name,
+                    QUERY_COMPONENT_ENCODE_SET,
+                    alreadyEncoded = false,
+                    strict = false,
+                    plusIsSpace = true,
+                    asciiOnly = true
+                )
+            )
             queries.add(
                 if (value != null)
-                    canonicalize(value, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = false, query = true)
+                    canonicalize(
+                        value,
+                        QUERY_COMPONENT_ENCODE_SET,
+                        alreadyEncoded = false,
+                        strict = false,
+                        plusIsSpace = true,
+                        asciiOnly = true
+                    )
                 else
                     null
             )
@@ -466,10 +567,26 @@ class DeepLinkUri private constructor(builder: Builder) {
             val queries = encodedQueryNamesAndValues ?: arrayListOf<String?>().also {
                 encodedQueryNamesAndValues = it
             }
-            queries.add(canonicalize(encodedName, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = true, query = true))
+            queries.add(
+                canonicalize(
+                    encodedName,
+                    QUERY_COMPONENT_REENCODE_SET,
+                    alreadyEncoded = true,
+                    strict = false,
+                    plusIsSpace = true,
+                    asciiOnly = true
+                )
+            )
             queries.add(
                 if (encodedValue != null)
-                    canonicalize(encodedValue, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = true, query = true)
+                    canonicalize(
+                        encodedValue,
+                        QUERY_COMPONENT_REENCODE_SET,
+                        alreadyEncoded = true,
+                        strict = false,
+                        plusIsSpace = true,
+                        asciiOnly = true
+                    )
                 else
                     null
             )
@@ -487,14 +604,28 @@ class DeepLinkUri private constructor(builder: Builder) {
 
         fun removeAllQueryParameters(name: String): Builder = apply {
             if (encodedQueryNamesAndValues == null) return@apply
-            val nameToRemove = canonicalize(name, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = false, query = true)
+            val nameToRemove = canonicalize(
+                name,
+                QUERY_COMPONENT_ENCODE_SET,
+                alreadyEncoded = false,
+                strict = false,
+                plusIsSpace = true,
+                asciiOnly = true
+            )
             removeAllCanonicalQueryParameters(nameToRemove)
         }
 
         fun removeAllEncodedQueryParameters(encodedName: String): Builder = apply {
             if (encodedQueryNamesAndValues == null) return@apply
             removeAllCanonicalQueryParameters(
-                canonicalize(encodedName, QUERY_COMPONENT_ENCODE_SET, alreadyEncoded = true, query = true)
+                canonicalize(
+                    encodedName,
+                    QUERY_COMPONENT_REENCODE_SET,
+                    alreadyEncoded = true,
+                    strict = false,
+                    plusIsSpace = true,
+                    asciiOnly = true
+                )
             )
         }
 
@@ -514,15 +645,59 @@ class DeepLinkUri private constructor(builder: Builder) {
             }
         }
 
-        fun fragment(fragment: String): Builder = apply {
-            this.encodedFragment = canonicalize(fragment, FRAGMENT_ENCODE_SET, alreadyEncoded = false, query = false)
+        fun fragment(fragment: String?): Builder = apply {
+            this.encodedFragment = fragment?.let {
+                canonicalize(it, FRAGMENT_ENCODE_SET, alreadyEncoded = false, strict = false, plusIsSpace = false, asciiOnly = false)
+            }
         }
 
-        fun encodedFragment(encodedFragment: String): Builder = apply {
-            this.encodedFragment = canonicalize(encodedFragment, FRAGMENT_ENCODE_SET,
-                alreadyEncoded = true,
-                query = false
-            )
+        fun encodedFragment(encodedFragment: String?): Builder = apply {
+            this.encodedFragment = encodedFragment?.let {
+                canonicalize(it, FRAGMENT_ENCODE_SET, alreadyEncoded = true, strict = false, plusIsSpace = false, asciiOnly = false)
+            }
+        }
+
+        /**
+         * Re-encodes the components of this URL so that it satisfies (obsolete) RFC 2396, which is
+         * particularly strict for certain components.
+         */
+        fun reencodeForUri(): Builder {
+            run {
+                var i = 0
+                val size = encodedPathSegments.size
+                while (i < size) {
+                    val pathSegment = encodedPathSegments[i]
+                    encodedPathSegments[i] = canonicalize(
+                        pathSegment, PATH_SEGMENT_ENCODE_SET_URI,
+                        alreadyEncoded = true,
+                        strict = true,
+                        plusIsSpace = false,
+                        asciiOnly = true
+                    )
+                    i++
+                }
+            }
+            encodedQueryNamesAndValues?.let {
+                var i = 0
+                val size = it.size
+                while (i < size) {
+                    val component = it[i]
+                    if (component != null) {
+                        it[i] = canonicalize(
+                            component, QUERY_COMPONENT_ENCODE_SET_URI,
+                            alreadyEncoded = true,
+                            strict = true,
+                            plusIsSpace = true,
+                            asciiOnly = true
+                        )
+                    }
+                    i++
+                }
+            }
+            encodedFragment = encodedFragment?.let {
+                canonicalize(it, FRAGMENT_ENCODE_SET_URI, alreadyEncoded = true, strict = true, plusIsSpace = false, asciiOnly = false)
+            }
+            return this
         }
 
         fun build(): DeepLinkUri {
@@ -532,9 +707,15 @@ class DeepLinkUri private constructor(builder: Builder) {
         }
 
         override fun toString(): String {
+            val scheme = scheme
+            val host = host
             val result = StringBuilder()
-            result.append(scheme)
-            result.append("://")
+            if (scheme != null) {
+                result.append(scheme)
+                result.append("://")
+            } else {
+                result.append("//")
+            }
 
             if (!encodedUsername.isEmpty() || !encodedPassword.isEmpty()) {
                 result.append(encodedUsername)
@@ -544,27 +725,29 @@ class DeepLinkUri private constructor(builder: Builder) {
                 }
                 result.append('@')
             }
-
-            if (host!!.indexOf(':') != -1) {
-                // Host is an IPv6 address.
-                result.append('[')
-                result.append(host)
-                result.append(']')
-            } else {
-                result.append(host)
+            if (host != null) {
+                if (host.indexOf(':') != -1) {
+                    // Host is an IPv6 address.
+                    result.append('[')
+                    result.append(host)
+                    result.append(']')
+                } else {
+                    result.append(host)
+                }
             }
-
-            val effectivePort = effectivePort()
-            if (effectivePort != defaultPort(scheme!!)) {
-                result.append(':')
-                result.append(effectivePort)
+            if (port != -1 || scheme != null) {
+                val effectivePort = effectivePort()
+                if (scheme == null || effectivePort != defaultPort(scheme)) {
+                    result.append(':')
+                    result.append(effectivePort)
+                }
             }
 
             pathSegmentsToString(result, encodedPathSegments)
 
-            if (encodedQueryNamesAndValues != null) {
+            encodedQueryNamesAndValues?.let {
                 result.append('?')
-                namesAndValuesToQueryString(result, encodedQueryNamesAndValues!!)
+                namesAndValuesToQueryString(result, it)
             }
 
             if (encodedFragment != null) {
@@ -637,7 +820,14 @@ class DeepLinkUri private constructor(builder: Builder) {
                                     input, pos, componentDelimiterOffset, ":"
                                 )
                                 val canonicalUsername = canonicalize(
-                                    input, pos, passwordColonOffset, USERNAME_ENCODE_SET, alreadyEncoded = true, query = false
+                                    input,
+                                    pos,
+                                    passwordColonOffset,
+                                    USERNAME_ENCODE_SET,
+                                    alreadyEncoded = true,
+                                    strict = false,
+                                    plusIsSpace = false,
+                                    asciiOnly = true
                                 )
                                 this.encodedUsername = if (hasUsername)
                                     this.encodedUsername + "%40" + canonicalUsername
@@ -646,8 +836,14 @@ class DeepLinkUri private constructor(builder: Builder) {
                                 if (passwordColonOffset != componentDelimiterOffset) {
                                     hasPassword = true
                                     this.encodedPassword = canonicalize(
-                                        input, passwordColonOffset + 1,
-                                        componentDelimiterOffset, PASSWORD_ENCODE_SET, alreadyEncoded = true, query = false
+                                        input,
+                                        passwordColonOffset + 1,
+                                        componentDelimiterOffset,
+                                        PASSWORD_ENCODE_SET,
+                                        alreadyEncoded = true,
+                                        strict = false,
+                                        plusIsSpace = false,
+                                        asciiOnly = true
                                     )
                                 }
                                 hasUsername = true
@@ -655,7 +851,8 @@ class DeepLinkUri private constructor(builder: Builder) {
                                 this.encodedPassword = this.encodedPassword + "%40" + canonicalize(
                                     input, pos, componentDelimiterOffset, PASSWORD_ENCODE_SET,
                                     alreadyEncoded = true,
-                                    query = false
+                                    strict = false,
+                                    plusIsSpace = false, asciiOnly = true
                                 )
                             }
                             pos = componentDelimiterOffset + 1
@@ -703,7 +900,14 @@ class DeepLinkUri private constructor(builder: Builder) {
                 val queryDelimiterOffset = delimiterOffset(input, pos, limit, "#")
                 this.encodedQueryNamesAndValues = queryStringToNamesAndValues(
                     canonicalize(
-                        input, pos + 1, queryDelimiterOffset, QUERY_ENCODE_SET, alreadyEncoded = true, query = true
+                        input,
+                        pos + 1,
+                        queryDelimiterOffset,
+                        QUERY_ENCODE_SET,
+                        alreadyEncoded = true,
+                        strict = false,
+                        plusIsSpace = true,
+                        asciiOnly = true
                     )
                 )
                 pos = queryDelimiterOffset
@@ -712,7 +916,14 @@ class DeepLinkUri private constructor(builder: Builder) {
             // Fragment.
             if (pos < limit && input[pos] == '#') {
                 this.encodedFragment = canonicalize(
-                    input, pos + 1, limit, FRAGMENT_ENCODE_SET, alreadyEncoded = true, query = false
+                    input,
+                    pos + 1,
+                    limit,
+                    FRAGMENT_ENCODE_SET,
+                    alreadyEncoded = true,
+                    strict = false,
+                    plusIsSpace = false,
+                    asciiOnly = false
                 )
             }
 
@@ -751,7 +962,7 @@ class DeepLinkUri private constructor(builder: Builder) {
         /** Adds a path segment. If the input is ".." or equivalent, this pops a path segment.  */
         private fun push(input: String, pos: Int, limit: Int, addTrailingSlash: Boolean, alreadyEncoded: Boolean) {
             val segment = canonicalize(
-                input, pos, limit, PATH_SEGMENT_ENCODE_SET, alreadyEncoded, false
+                input, pos, limit, PATH_SEGMENT_ENCODE_SET, alreadyEncoded, strict = false, plusIsSpace = false, asciiOnly = true
             )
             if (isDot(segment)) {
                 return  // Skip '.' path segments.
@@ -898,13 +1109,19 @@ class DeepLinkUri private constructor(builder: Builder) {
         private fun canonicalizeHost(input: String, pos: Int, limit: Int): String? {
             // Start by percent decoding the host. The WHATWG spec suggests doing this only after we've
             // checked for IPv6 square braces. But Chrome does it first, and that's more lenient.
-            val percentDecoded = percentDecode(input, pos, limit)
+            val percentDecoded = percentDecode(input, pos, limit, false)
 
-            // If the input is encased in square braces "[...]", drop 'em. We have an IPv6 address.
-            if (percentDecoded.startsWith("[") && percentDecoded.endsWith("]")) {
-                val inetAddress = decodeIpv6(percentDecoded, 1, percentDecoded.length - 1) ?: return null
-                val address = inetAddress.address
+            // If the input contains a :, it’s an IPv6 address.
+            if (percentDecoded.contains(":")) {
+                // If the input is encased in square braces "[...]", drop 'em.
+                val inetAddress = if (percentDecoded.startsWith("[") && percentDecoded.endsWith("]"))
+                    decodeIpv6(percentDecoded, 1, percentDecoded.length - 1)
+                else
+                    decodeIpv6(percentDecoded, 0, percentDecoded.length)
+
+                val address = inetAddress?.address ?: return null
                 if (address.size == 16) return inet6AddressToAscii(address)
+                if (address.size == 4) return inetAddress.hostAddress // An IPv4-mapped IPv6 address.
                 throw AssertionError()
             }
 
@@ -1066,6 +1283,8 @@ class DeepLinkUri private constructor(builder: Builder) {
 
         private fun inet6AddressToAscii(address: ByteArray): String {
             // Go through the address looking for the longest run of 0s. Each group is 2-bytes.
+            // A run must be longer than one group (section 4.2.2).
+            // If there are multiple equal runs, the first one must be used (section 4.2.3).
             var longestRunOffset = -1
             var longestRunLength = 0
             run {
@@ -1076,7 +1295,7 @@ class DeepLinkUri private constructor(builder: Builder) {
                         i += 2
                     }
                     val currentRunLength = i - currentRunOffset
-                    if (currentRunLength > longestRunLength) {
+                    if (currentRunLength > longestRunLength && currentRunLength >= 4) {
                         longestRunOffset = currentRunOffset
                         longestRunLength = currentRunLength
                     }
@@ -1094,7 +1313,7 @@ class DeepLinkUri private constructor(builder: Builder) {
                     if (i == 16) result.writeByte(':'.toInt())
                 } else {
                     if (i > 0) result.writeByte(':'.toInt())
-                    val group = address[i].toInt() and (0xff shl 8) or (address[i + 1].toInt() and 0xff)
+                    val group = ((address[i].toInt() and 0xff) shl 8) or (address[i + 1].toInt() and 0xff)
                     result.writeHexadecimalUnsignedLong(group.toLong())
                     i += 2
                 }
@@ -1105,7 +1324,8 @@ class DeepLinkUri private constructor(builder: Builder) {
         private fun parsePort(input: String, pos: Int, limit: Int): Int {
             return try {
                 // Canonicalize the port string to skip '\n' etc.
-                val portString = canonicalize(input, pos, limit, "", alreadyEncoded = false, query = false)
+                val portString =
+                    canonicalize(input, pos, limit, "", alreadyEncoded = false, strict = false, plusIsSpace = false, asciiOnly = true)
                 val i = Integer.parseInt(portString)
                 if (i in 1..65535) i else -1
             } catch (e: NumberFormatException) {
@@ -1115,10 +1335,10 @@ class DeepLinkUri private constructor(builder: Builder) {
         }
     }
 
-    private fun percentDecode(list: List<String?>): List<String?> {
+    private fun percentDecode(list: List<String?>, plusIsSpace: Boolean): List<String?> {
         val result = ArrayList<String?>(list.size)
         for (s in list) {
-            result.add(if (s != null) percentDecode(s) else null)
+            result.add(if (s != null) percentDecode(s, plusIsSpace = plusIsSpace) else null)
         }
         return Collections.unmodifiableList(result)
     }
@@ -1129,11 +1349,15 @@ class DeepLinkUri private constructor(builder: Builder) {
         private const val USERNAME_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#"
         private const val PASSWORD_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#"
         private const val PATH_SEGMENT_ENCODE_SET = " \"<>^`{}|/\\?#"
+        private const val PATH_SEGMENT_ENCODE_SET_URI = "[]"
         private const val QUERY_ENCODE_SET = " \"'<>#"
-        private const val QUERY_COMPONENT_ENCODE_SET = " \"'<>#&="
+        private const val QUERY_COMPONENT_REENCODE_SET = " \"'<>#&="
+        private const val QUERY_COMPONENT_ENCODE_SET = " !\"#$&'(),/:;<=>?@[]\\^`{|}~"
+        private const val QUERY_COMPONENT_ENCODE_SET_URI = "\\^`{|}"
         private const val CONVERT_TO_URI_ENCODE_SET = "^`{}|\\"
         private const val FORM_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#&!$(),~"
         private const val FRAGMENT_ENCODE_SET = ""
+        private const val FRAGMENT_ENCODE_SET_URI = " \"#<>\\^`{|}"
 
         /**
          * Returns 80 if `scheme.equals("http")`, 443 if `scheme.equals("https")` and -1
@@ -1203,6 +1427,7 @@ class DeepLinkUri private constructor(builder: Builder) {
          * Returns a new `DeepLinkUri` representing `uri` if it is a well-formed
          * URI, or throws an `IllegalArgumentException` if it isn't.
          */
+        @JvmStatic
         fun parse(uri: String): DeepLinkUri {
             val builder = Builder()
             val result = builder.parse(null, uri)
@@ -1216,6 +1441,7 @@ class DeepLinkUri private constructor(builder: Builder) {
          * Returns a new `DeepLinkUri` representing `uri` if it is a well-formed
          * URI, or null if it isn't.
          */
+        @JvmStatic
         fun parseOrNull(uri: String): DeepLinkUri? {
             val builder = Builder()
             val result = builder.parse(null, uri)
@@ -1227,6 +1453,7 @@ class DeepLinkUri private constructor(builder: Builder) {
          *
          * Use `parseOrNull(url.toString())` if you'd prefer a nullable version than throwing.
          */
+        @JvmStatic
         fun get(url: URL): DeepLinkUri {
             return parse(url.toString())
         }
@@ -1236,6 +1463,7 @@ class DeepLinkUri private constructor(builder: Builder) {
          *
          * Use `parseOrNull(uri.toString())` if you'd prefer a nullable version than throwing.
          */
+        @JvmStatic
         fun get(uri: URI): DeepLinkUri {
             return parse(uri.toString())
         }
@@ -1251,14 +1479,19 @@ class DeepLinkUri private constructor(builder: Builder) {
         }
 
         @JvmOverloads
-        internal fun percentDecode(encoded: String, pos: Int = 0, limit: Int = encoded.length): String {
+        internal fun percentDecode(
+            encoded: String,
+            pos: Int = 0,
+            limit: Int = encoded.length,
+            plusIsSpace: Boolean = false
+        ): String {
             for (i in pos until limit) {
                 val c = encoded[i]
-                if (c == '%') {
+                if (c == '%' || c == '+' && plusIsSpace) {
                     // Slow path: the character at i requires decoding!
                     val out = Buffer()
                     out.writeUtf8(encoded, pos, i)
-                    percentDecode(out, encoded, i, limit)
+                    percentDecode(out, encoded, i, limit, plusIsSpace)
                     return out.readUtf8()
                 }
             }
@@ -1267,7 +1500,7 @@ class DeepLinkUri private constructor(builder: Builder) {
             return encoded.substring(pos, limit)
         }
 
-        private fun percentDecode(out: Buffer, encoded: String, pos: Int, limit: Int) {
+        private fun percentDecode(out: Buffer, encoded: String, pos: Int, limit: Int, plusIsSpace: Boolean) {
             var codePoint: Int
             var i = pos
             while (i < limit) {
@@ -1281,10 +1514,21 @@ class DeepLinkUri private constructor(builder: Builder) {
                         i += Character.charCount(codePoint)
                         continue
                     }
+                } else if (codePoint == '+'.toInt() && plusIsSpace) {
+                    out.writeByte(' '.toInt())
+                    i += Character.charCount(codePoint)
+                    continue
                 }
                 out.writeUtf8CodePoint(codePoint)
                 i += Character.charCount(codePoint)
             }
+        }
+
+        internal fun percentEncoded(encoded: String, pos: Int, limit: Int): Boolean {
+            return (pos + 2 < limit
+                    && encoded[pos] == '%'
+                    && decodeHexDigit(encoded[pos + 1]) != -1
+                    && decodeHexDigit(encoded[pos + 2]) != -1)
         }
 
         internal fun decodeHexDigit(c: Char): Int {
@@ -1308,26 +1552,29 @@ class DeepLinkUri private constructor(builder: Builder) {
          *
          *
          * @param alreadyEncoded true to leave '%' as-is; false to convert it to '%25'.
-         * @param query true if to encode ' ' as '+', and '+' as "%2B".
+         * @param strict true to encode '%' if it is not the prefix of a valid percent encoding.
+         * @param plusIsSpace true to encode '+' as "%2B" if it is not already encoded.
+         * @param asciiOnly true to encode all non-ASCII codepoints.
          */
         internal fun canonicalize(
             input: String, pos: Int, limit: Int, encodeSet: String,
-            alreadyEncoded: Boolean, query: Boolean
+            alreadyEncoded: Boolean, strict: Boolean, plusIsSpace: Boolean, asciiOnly: Boolean
         ): String {
             var codePoint: Int
             var i = pos
             while (i < limit) {
                 codePoint = input.codePointAt(i)
                 if (codePoint < 0x20
-                    || codePoint >= 0x7f
+                    || codePoint == 0x7f
+                    || codePoint >= 0x80 && asciiOnly
                     || encodeSet.indexOf(codePoint.toChar()) != -1
-                    || codePoint == '%'.toInt() && !alreadyEncoded
-                    || query && codePoint == '+'.toInt()
+                    || codePoint == '%'.toInt() &&  (!alreadyEncoded || strict && !percentEncoded(input, i, limit))
+                    || codePoint == '+'.toInt() && plusIsSpace
                 ) {
                     // Slow path: the character at i requires encoding!
                     val out = Buffer()
                     out.writeUtf8(input, pos, i)
-                    canonicalize(out, input, i, limit, encodeSet, alreadyEncoded, query)
+                    canonicalize(out, input, i, limit, encodeSet, alreadyEncoded, strict, plusIsSpace, asciiOnly)
                     return out.readUtf8()
                 }
                 i += Character.charCount(codePoint)
@@ -1339,7 +1586,7 @@ class DeepLinkUri private constructor(builder: Builder) {
 
         private fun canonicalize(
             out: Buffer, input: String, pos: Int, limit: Int,
-            encodeSet: String, alreadyEncoded: Boolean, query: Boolean
+            encodeSet: String, alreadyEncoded: Boolean, strict: Boolean, plusIsSpace: Boolean, asciiOnly: Boolean
         ) {
             var utf8Buffer: Buffer? = null // Lazily allocated.
             var codePoint: Int
@@ -1348,13 +1595,14 @@ class DeepLinkUri private constructor(builder: Builder) {
                 codePoint = input.codePointAt(i)
                 if (alreadyEncoded && (codePoint == '\t'.toInt() || codePoint == '\n'.toInt() || codePoint == '\u000c'.toInt() || codePoint == '\r'.toInt())) {
                     // Skip this character.
-                } else if (query && codePoint == '+'.toInt()) {
-                    // HTML permits space to be encoded as '+'. We use '%20' to avoid special cases.
-                    out.writeUtf8(if (alreadyEncoded) "%20" else "%2B")
+                } else if (codePoint == '+'.toInt() && plusIsSpace) {
+                    // Encode '+' as '%2B' since we permit ' ' to be encoded as either '+' or '%20'.
+                    out.writeUtf8(if (alreadyEncoded) "+" else "%2B")
                 } else if (codePoint < 0x20
-                    || codePoint >= 0x7f
+                    || codePoint == 0x7f
+                    || codePoint >= 0x80 && asciiOnly
                     || encodeSet.indexOf(codePoint.toChar()) != -1
-                    || codePoint == '%'.toInt() && !alreadyEncoded
+                    || codePoint == '%'.toInt() &&  (!alreadyEncoded || strict && !percentEncoded(input, i, limit))
                 ) {
                     // Percent encode this character.
                     if (utf8Buffer == null) {
@@ -1375,8 +1623,15 @@ class DeepLinkUri private constructor(builder: Builder) {
             }
         }
 
-        internal fun canonicalize(input: String, encodeSet: String, alreadyEncoded: Boolean, query: Boolean): String {
-            return canonicalize(input, 0, input.length, encodeSet, alreadyEncoded, query)
+        internal fun canonicalize(
+            input: String,
+            encodeSet: String,
+            alreadyEncoded: Boolean,
+            strict: Boolean,
+            plusIsSpace: Boolean,
+            asciiOnly: Boolean
+        ): String {
+            return canonicalize(input, 0, input.length, encodeSet, alreadyEncoded, strict, plusIsSpace, asciiOnly)
         }
     }
 }
