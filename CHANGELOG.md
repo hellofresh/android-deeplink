@@ -5,16 +5,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-## [0.1.0] - 2019-01-10
+## [0.1.0] - 2019-01-17
 ### Added
-- Implemented deeplink parser.
+- Implemented deep link parser.
 - Platform agnostic URI implementation.
 - Ignore query keys clashing with predefined path params.
 - Support for treating host as path.
 - Added code sample to readme.
 - Set up build automation.
-- Added transformation extensions for DeepLinkUri to/from `android.net.Uri`
-- Implemented support for nameless path segment matching
+- Added transformation extensions for DeepLinkUri to/from `android.net.Uri`.
+- Implemented support for nameless path segment matching.
+- Added unit test for `DeepLinkUri`.
 
 [Unreleased]: https://github.com/hellofresh/android-deeplink/compare/0.1.0...HEAD
 [0.1.0]: https://github.com/hellofresh/android-deeplink/compare/2a89d70648ee809bac78a3b768fe664d3f04aad8...0.1.0
