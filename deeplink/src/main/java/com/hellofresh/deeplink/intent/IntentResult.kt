@@ -8,7 +8,8 @@ import com.hellofresh.deeplink.Environment
 class IntentResult private constructor(
     private val environment: Environment,
     private val taskStackBuilder: TaskStackBuilder,
-    private val requiresAuth: Boolean
+    private val requiresAuth: Boolean,
+    val isFallback: Boolean
 ) {
 
     fun start() {
@@ -25,6 +26,9 @@ class IntentResult private constructor(
 
         // Do we need to expose a way to update the actual intent? Fill-in style
         // HF app adds BUNDLE_APPINDEXING_URI to intent post-parse
+
+        // How to expose API for authenticator intent?
+        // Do we need a singleton that already contains the env and auth intent?
         // ====
 
         val context = environment.context
@@ -42,25 +46,21 @@ class IntentResult private constructor(
         }
     }
 
-    // Do we even need a builder? :thinking:
-    class Builder internal constructor(private val env: Environment) {
+    class Builder internal constructor(private val env: Environment, private val taskStackBuilder: TaskStackBuilder) {
 
-        private var taskStackBuilder: TaskStackBuilder? = null
         private var requiresAuth: Boolean = false
+        private var isFallback: Boolean = false
 
-        fun withIntent(intent: Intent, requiresAuth: Boolean = false): Builder = apply {
-            this.taskStackBuilder = TaskStackBuilder.create(env.context).addNextIntent(intent)
+        fun requiresAuth(requiresAuth: Boolean): Builder = apply {
             this.requiresAuth = requiresAuth
         }
 
-        fun withTaskStack(taskStackBuilder: TaskStackBuilder, requiresAuth: Boolean): Builder = apply {
-            this.taskStackBuilder = taskStackBuilder
-            this.requiresAuth = requiresAuth
+        fun isFallback(isFallback: Boolean): Builder = apply {
+            this.isFallback = isFallback
         }
 
-        fun build(): IntentResult {
-            val taskStack = taskStackBuilder ?: error("No intent/task stack builder has been set!")
-            return IntentResult(env, taskStack, requiresAuth)
+        fun create(): IntentResult {
+            return IntentResult(env, taskStackBuilder, requiresAuth, isFallback)
         }
 
     }
@@ -69,11 +69,15 @@ class IntentResult private constructor(
 
         const val NEXT_INTENT = "com.hellofresh.deeplink.intent.next"
 
-        fun builder(env: Environment): Builder {
-            return Builder(env)
+        fun of(env: Environment, intent: Intent): Builder {
+            val taskStack = TaskStackBuilder.create(env.context).addNextIntent(intent)
+            return of(env, taskStack)
         }
 
-        // Do we need this method?
+        fun of(env: Environment, taskStackBuilder: TaskStackBuilder): Builder {
+            return Builder(env, taskStackBuilder)
+        }
+
         fun advance(authIntent: Intent): Boolean {
             val pendingIntent = authIntent.getParcelableExtra<PendingIntent>(IntentResult.NEXT_INTENT) ?: return false
             pendingIntent.send()

@@ -43,9 +43,9 @@ object RecipeRoute : BaseRoute<IntentResult>("recipe") {
             .putExtra("keyC", params["c"])
             .setClassName("com.hellofresh.androidapp", "RecipeActivity")
 
-        return IntentResult.builder(env)
-            .withIntent(intent, true)
-            .build()
+        return IntentResult.of(env, intent)
+            .requiresAuth(true)
+            .create()
     }
 }
 
@@ -59,9 +59,9 @@ object SubscriptionRoute : BaseRoute<IntentResult>("subscription") {
             .addNextIntentWithParentStack(parentIntent)
             .addNextIntent(intent)
 
-        return IntentResult.builder(env)
-            .withTaskStack(taskStack, true)
-            .build()
+        return IntentResult.of(env, taskStack)
+            .requiresAuth(true)
+            .create()
     }
 }
 
@@ -69,9 +69,10 @@ object Fallback : Action<IntentResult> {
 
     override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): IntentResult {
         val defaultIntent = Intent().setClassName("com.hellofresh.androidapp", "MainActivity")
-        return IntentResult.builder(env)
-            .withIntent(defaultIntent)
-            .build()
+        return IntentResult.of(env, defaultIntent)
+            .requiresAuth(false)
+            .isFallback(true)
+            .create()
     }
 }
 
