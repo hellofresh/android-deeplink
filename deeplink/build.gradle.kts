@@ -45,8 +45,10 @@ dependencies {
     implementation(Dependencies.okio)
     testImplementation(DependenciesTest.junit)
     testImplementation(DependenciesTest.kotlinTest)
+    testImplementation(DependenciesTest.kotlinTestJunit)
     androidTestImplementation(DependenciesTest.junit)
     androidTestImplementation(DependenciesTest.kotlinTest)
+    androidTestImplementation(DependenciesTest.kotlinTestJunit)
     androidTestImplementation(DependenciesTest.supportTestRunner)
 }
 

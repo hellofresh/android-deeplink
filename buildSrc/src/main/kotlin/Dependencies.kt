@@ -52,5 +52,6 @@ object DependenciesTest {
 
     const val junit = "junit:junit:${Versions.junit}"
     const val kotlinTest = "org.jetbrains.kotlin:kotlin-test:${Versions.kotlin}"
+    const val kotlinTestJunit = "org.jetbrains.kotlin:kotlin-test-junit:${Versions.kotlin}"
     const val supportTestRunner = "com.android.support.test:runner:${Versions.supportTest}"
 }
