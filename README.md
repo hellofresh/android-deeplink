@@ -4,7 +4,7 @@
 
 Deeplink parser library
 
-**Latest version:** [0.1.0](https://github.com/hellofresh/android-deeplink/blob/master/CHANGELOG.md#0.1.0)
+**Latest version:** [0.2.0](https://github.com/hellofresh/android-deeplink/blob/master/CHANGELOG.md#0.2.0)
 
 ## Sample usage
 The most important entry points are the `DeepLinkParser<T>` and `BaseRoute<T>` classes.
