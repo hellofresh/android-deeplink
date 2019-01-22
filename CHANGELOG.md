@@ -4,6 +4,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## [Unreleased]
+- Improved path matching.
+  - Route pattern with/without trailing slash now matches URI with/without trailing slash.
+  - Named/nameless parameters now ignore empty path segments at the end of a URI. 
+  However, empty segments occurring before non-empty ones are still processed accordingly
+- Changed visibility of `MatchResult` to `internal`.
 
 ## [0.1.0] - 2019-01-17
 ### Added

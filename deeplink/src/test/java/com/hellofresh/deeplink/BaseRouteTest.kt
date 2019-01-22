@@ -25,6 +25,84 @@ import kotlin.test.assertTrue
 class BaseRouteTest {
 
     @Test
+    fun matchWith_pathVariations() {
+        var uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/x")
+        assertFalse(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/")
+        assertFalse(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://host/recipes")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://host/recipes/")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://host/recipes/x")
+        assertFalse(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://host/recipe/1234")
+        assertTrue(TestRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://host/recipe/")
+        assertFalse(TestRoute.matchWith(uri).isMatch)
+    }
+
+    @Test
+    fun matchWith_pathVariationsWithOverride() {
+        var uri = DeepLinkUri.parse("hellofresh://recipes")
+        assertTrue(PathOverrideRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://recipes/")
+        assertTrue(PathOverrideRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://recipes/x")
+        assertFalse(PathOverrideRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://recipe/1234")
+        assertTrue(PathOverrideRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("hellofresh://recipe/")
+        assertFalse(PathOverrideRoute.matchWith(uri).isMatch)
+    }
+
+    @Test
+    fun matchWith_pathVariationsWithNamelessParameter() {
+        var uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/x/1234")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes//1234")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/")
+        assertFalse(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes//")
+        assertFalse(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/x")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234")
+        assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/")
+        assertFalse(NamelessPathRoute.matchWith(uri).isMatch)
+
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe")
+        assertFalse(NamelessPathRoute.matchWith(uri).isMatch)
+    }
+
+    @Test
     fun matchWith_UriWithNullQueryValue_ThrowsException() {
         assertFailsWith<IllegalStateException> {
             val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/1234?q")
@@ -99,12 +177,12 @@ class BaseRouteTest {
         assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
     }
 
-    object TestRoute : BaseRoute<Unit>("recipe/:id") {
+object TestRoute : BaseRoute<Unit>("recipes", "recipe/:id") {
 
-        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
-    }
+    override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
+}
 
-    object PathOverrideRoute : BaseRoute<Unit>("recipe/:id") {
+    object PathOverrideRoute : BaseRoute<Unit>("recipes", "recipe/:id") {
 
         override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
 
@@ -113,7 +191,7 @@ class BaseRouteTest {
         }
     }
     
-    object NamelessPathRoute : BaseRoute<Unit>("recipes/*/:id") {
+    object NamelessPathRoute : BaseRoute<Unit>("recipe/*", "recipes/*/:id") {
 
         override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
     }

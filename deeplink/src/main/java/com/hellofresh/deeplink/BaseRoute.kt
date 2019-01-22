@@ -46,13 +46,14 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
     }
 
     private fun retrieveHostAndPathSegments(uri: DeepLinkUri): Pair<String, List<String>> {
+        val trimmedPathSegments = uri.pathSegments().dropLastWhile { it.isEmpty() }
         if (treatHostAsPath(uri)) {
             val pathSegments = ArrayList<String>(uri.pathSize() + 1)
             pathSegments.add(uri.host())
-            pathSegments.addAll(uri.pathSegments())
+            pathSegments.addAll(trimmedPathSegments)
             return "" to pathSegments
         }
-        return uri.host() to uri.pathSegments()
+        return uri.host() to trimmedPathSegments
     }
 
     /**
