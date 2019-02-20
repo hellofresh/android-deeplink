@@ -5,6 +5,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Added SNAPSHOT releases to JFrog
+
 ## [0.2.0] - 2019-01-22
 - Improved path matching.
   - Route pattern with/without trailing slash now matches URI with/without trailing slash.
