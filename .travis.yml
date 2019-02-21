@@ -24,7 +24,7 @@ script:
   - "./gradlew --stacktrace check --no-daemon"
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-  - ./scripts/deploy_snapshot.sh
+  - ./script/deploy-snapshot.sh
 deploy:
   - provider: script
     skip_cleanup: true
