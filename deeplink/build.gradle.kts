@@ -1,6 +1,8 @@
-
+import groovy.lang.GroovyObject
 import org.gradle.api.publish.maven.MavenPom
 import org.jetbrains.dokka.gradle.DokkaTask
+import org.jfrog.gradle.plugin.artifactory.dsl.PublisherConfig
+import org.jfrog.gradle.plugin.artifactory.dsl.ResolverConfig
 
 /*
  * Copyright (c) 2019.  The HelloFresh Android Team
@@ -24,6 +26,7 @@ plugins {
     id("maven-publish")
     id("com.jfrog.bintray") version Versions.bintrayGradlePlugin
     id("org.jetbrains.dokka-android") version Versions.dokkaAndroid
+    id("com.jfrog.artifactory") version Versions.jfrogArtifactory
 }
 
 android {
@@ -126,4 +129,24 @@ fun MavenPom.addDependencies() = withXml {
             }
         }
     }
+}
+
+artifactory {
+    setContextUrl("https://oss.jfrog.org")
+    publish(delegateClosureOf<PublisherConfig> {
+        repository(delegateClosureOf<GroovyObject> {
+            val repoKey = if (Project.version.endsWith("SNAPSHOT")) "oss-snapshot-local" else "oss-release-local"
+            setProperty("repoKey", repoKey)
+            setProperty("username", System.getenv("BINTRAY_USER") ?: "")
+            setProperty("password", System.getenv("BINTRAY_API_KEY") ?: "")
+            setProperty("maven", true)
+        })
+        defaults(delegateClosureOf<GroovyObject> {
+            invokeMethod("publications", Project.artifactId)
+        })
+
+        resolve(delegateClosureOf<ResolverConfig> {
+            setProperty("repoKey", "jcenter")
+        })
+    })
 }

@@ -20,13 +20,11 @@ cache:
     - "$HOME/.gradle/caches/"
     - "$HOME/.gradle/wrapper/"
     - "$HOME/.android/build-cache"
-before_script:
-  - export VERSION_TO_BUILD="$TRAVIS_TAG"
-  - export PATH="$ANDROID_HOMEtools/bin:$PATH"
 script:
   - "./gradlew --stacktrace check --no-daemon"
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+  - ./scripts/deploy_snapshot.sh
 deploy:
   - provider: script
     skip_cleanup: true
