@@ -46,6 +46,44 @@ val stringResult = parser.parse("http://www.hellofresh.com/recipe/1234")
 assertEquals("1234", stringResult)
 ```
 
+## Installation
+
+To add `android-deeplink` to your project, include the following in your app's `build.gradle.kts` or `build.gradle` file respectively:
+
+`build.gradle.kts`
+
+```
+dependencies {
+    implementation("com.hellofresh.android:deeplink:${latest.version}")
+}
+```
+
+`build.gradle`
+
+```
+dependencies {
+    implementation "com.hellofresh.android:deeplink:${latest.version}"
+}
+```
+
+**Snapshots** of the development version are available in JFrog's snapshots repository. Add the repo below to download `SNAPSHOT` releases.
+
+`build.gradle.kts`
+
+```
+repositories {
+    maven(url = "http://oss.jfrog.org/artifactory/oss-snapshot-local/")
+}
+```
+
+`build.gradle`
+
+```
+repositories {
+    maven { url 'http://oss.jfrog.org/artifactory/oss-snapshot-local/' }
+}
+```
+
 License
 -------
 
