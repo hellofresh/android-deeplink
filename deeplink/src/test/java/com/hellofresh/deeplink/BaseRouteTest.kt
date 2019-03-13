@@ -178,7 +178,7 @@ class BaseRouteTest {
     }
 
     @Test
-    fun matchWith_regexPathResolutionNoGrouping() {
+    fun matchWith_regexPathResolution() {
         var uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/detail/abc-1234")
         var res = RegexPathRoute.matchWith(uri)
         assertTrue(res.isMatch)
@@ -198,14 +198,6 @@ class BaseRouteTest {
         // id does not match
         uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/detail/1234")
         assertFalse(RegexPathRoute.matchWith(uri).isMatch)
-    }
-
-    @Test
-    fun matchWith_regexPathResolutionWithGrouping() {
-        val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/abc-1234")
-        val res = RegexPathRoute.matchWith(uri)
-        assertTrue(res.isMatch)
-        assertEquals("1234", res.params["id"])
     }
 
     @Test
@@ -235,7 +227,7 @@ class BaseRouteTest {
         override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
     }
 
-    object RegexPathRoute : BaseRoute<Unit>("recipes/:action(detail|info)/:id(.*-\\w+)", "recipe/:id(.*-(\\w+))") {
+    object RegexPathRoute : BaseRoute<Unit>("recipes/:action(detail|info)/:id(.*-\\w+)") {
 
         override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
     }

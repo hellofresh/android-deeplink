@@ -71,11 +71,7 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
         val inputMatcher = Pattern.compile("^$userPattern$").matcher(inPart)
         if (!inputMatcher.matches()) return null
 
-        val finalValue = when {
-            inputMatcher.groupCount() > 0 -> inputMatcher.group(1) // Picks the first group if exists
-            else -> inputMatcher.group() // Falls back to the entire string
-        }
-        return Pair(key, finalValue)
+        return Pair(key, inPart)
     }
 
     /**
