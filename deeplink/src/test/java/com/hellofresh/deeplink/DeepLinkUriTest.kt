@@ -1833,14 +1833,11 @@ class DeepLinkUriTest {
 
     companion object {
 
-        @Suppress("unused")
+        @Suppress("unused", "BooleanLiteralArgument")
         @Parameterized.Parameters(name = "Use get = {0}")
         @JvmStatic
-        fun parameters(): Collection<Array<Any>> {
-            return Arrays.asList(
-                arrayOf<Any>(true),
-                arrayOf<Any>(false)
-            )
+        fun parameters(): Collection<*> {
+            return listOf(true, false)
         }
     }
 }
