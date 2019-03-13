@@ -33,7 +33,8 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
                 when {
                     routePart.startsWith(":") -> {
                         val (key, value) = resolveParameterizedPath(routePart, inPart) ?: return@forEach
-                        params[key] = value
+                        val parameterKey = key.takeUnless { it.isEmpty() } ?: return@zip
+                        params[parameterKey] = value
                     }
                     routePart == "*" -> return@zip
                     routePart != inPart -> return@forEach
