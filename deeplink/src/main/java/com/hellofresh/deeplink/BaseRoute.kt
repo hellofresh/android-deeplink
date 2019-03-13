@@ -16,6 +16,8 @@
 
 package com.hellofresh.deeplink
 
+import java.util.regex.Pattern
+
 abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
 
     internal fun matchWith(uri: DeepLinkUri): MatchResult {
@@ -29,7 +31,10 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
             }
             inputParts.zip(parts) { inPart, routePart ->
                 when {
-                    routePart.startsWith(":") -> params[routePart.substring(1)] = inPart
+                    routePart.startsWith(":") -> {
+                        val (key, value) = resolveParameterizedPath(routePart, inPart) ?: return@forEach
+                        params[key] = value
+                    }
                     routePart == "*" -> return@zip
                     routePart != inPart -> return@forEach
                 }
@@ -56,6 +61,22 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
         return uri.host() to trimmedPathSegments
     }
 
+    private fun resolveParameterizedPath(routePart: String, inPart: String): Pair<String, String>? {
+        val partialMatcher = PARAMETERIZED_PATH_PATTERN.matcher(routePart)
+        if (!partialMatcher.matches()) return null
+
+        val key = partialMatcher.group(1)
+        val userPattern = partialMatcher.group(3) ?: return Pair(key, inPart)
+        val inputMatcher = Pattern.compile("^$userPattern$").matcher(inPart)
+        if (!inputMatcher.matches()) return null
+
+        val finalValue = when {
+            inputMatcher.groupCount() > 0 -> inputMatcher.group(1) // Picks the first group if exists
+            else -> inputMatcher.group() // Falls back to the entire string
+        }
+        return Pair(key, finalValue)
+    }
+
     /**
      * Returns whether or not to treat the [uri] host as part of the path segments.
      *
@@ -76,6 +97,19 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
 
     override fun hashCode(): Int {
         return routes.contentHashCode()
+    }
+
+    companion object {
+
+        /**
+         * Regex pattern that will be used to validate and retrieve path values from a specified input.
+         *
+         * This pattern is made up of 3 groups.
+         * Group 1: An optional parameter name that will be used to reference the actual path value
+         * Group 2: The entirety of the (optional) regex pattern for the path
+         * Group 3: The actual regex pattern that will be supplied by the user
+         */
+        private val PARAMETERIZED_PATH_PATTERN = Pattern.compile("^:(\\w*)(\\((.*)\\))?$")
     }
 
 }
