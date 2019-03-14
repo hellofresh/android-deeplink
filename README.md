@@ -34,9 +34,11 @@ This is a static string defined at compile time that must be exactly the same as
 2. **Wildcard (\*)**:
 This is quite straightforward, as the wildcard always passes unconditionally
 
-3. **Parameterized string**:
-This is a simple word that starts with a `:`. Similar to wildcard, it also passes unconditionally.
-The word will later be used as the key in the param map, and the corresponding URI part as its value.
+3. **Parameterized string**: `:parameterName(REGEX)`  
+Simple regexes are officially supported, however, the library does not attempt any sophisticated logic, hence complex regexes are highly discouraged.  
+The `REGEX` is matched against the entire URI part and if successful, `parameterName` will be stored as a key in the param map, and the corresponding URI part as its value
+  - `(REGEX)` is optional, and omitting it makes the syntax like `:parameterName`. This is basically equivalent to `:parameterName(.*)` and it passes unconditionally, just like the wildcard.  
+  - `parameterName` can be omitted as well in a situation where the regex matching functionality alone is required. The syntax then becomes `:(REGEX)`. Since there is no parameter name, the matched value will not be added to the param map.
 
 A Route can be configured such that it treats the host of the input deep link as the first part of the path segments. This can come handy for use with deep links made up of custom schemes and that do not necessarily define an explicit host.
 

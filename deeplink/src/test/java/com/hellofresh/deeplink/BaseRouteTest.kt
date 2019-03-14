@@ -177,10 +177,41 @@ class BaseRouteTest {
         assertTrue(NamelessPathRoute.matchWith(uri).isMatch)
     }
 
-object TestRoute : BaseRoute<Unit>("recipes", "recipe/:id") {
+    @Test
+    fun matchWith_regexPathResolution() {
+        var uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/detail/abc-1234")
+        var res = RegexPathRoute.matchWith(uri)
+        assertTrue(res.isMatch)
+        assertEquals("detail", res.params["action"])
+        assertEquals("abc-1234", res.params["id"])
 
-    override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
-}
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/info/abc-1234")
+        res = RegexPathRoute.matchWith(uri)
+        assertTrue(res.isMatch)
+        assertEquals("info", res.params["action"])
+        assertEquals("abc-1234", res.params["id"])
+
+        // action does not match
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/invalid/abc-1234")
+        assertFalse(RegexPathRoute.matchWith(uri).isMatch)
+
+        // id does not match
+        uri = DeepLinkUri.parse("http://www.hellofresh.com/recipes/detail/1234")
+        assertFalse(RegexPathRoute.matchWith(uri).isMatch)
+    }
+
+    @Test
+    fun matchWith_regexPathResolutionUnnamed() {
+        val uri = DeepLinkUri.parse("http://www.hellofresh.com/recipe/abc-1234")
+        val res = UnnamedRegexPathRoute.matchWith(uri)
+        assertTrue(res.isMatch)
+        assertTrue(res.params.isEmpty())
+    }
+
+    object TestRoute : BaseRoute<Unit>("recipes", "recipe/:id") {
+
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
+    }
 
     object PathOverrideRoute : BaseRoute<Unit>("recipes", "recipe/:id") {
 
@@ -190,8 +221,18 @@ object TestRoute : BaseRoute<Unit>("recipes", "recipe/:id") {
             return uri.scheme() == "hellofresh"
         }
     }
-    
+
     object NamelessPathRoute : BaseRoute<Unit>("recipe/*", "recipes/*/:id") {
+
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
+    }
+
+    object RegexPathRoute : BaseRoute<Unit>("recipes/:action(detail|info)/:id(.*-\\w+)") {
+
+        override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
+    }
+
+    object UnnamedRegexPathRoute : BaseRoute<Unit>("recipe/:(.*-\\w+)") {
 
         override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment) = Unit
     }
