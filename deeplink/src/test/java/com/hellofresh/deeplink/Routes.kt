@@ -30,3 +30,17 @@ object SubscriptionRoute : BaseRoute<String>("subscription") {
         return javaClass.simpleName
     }
 }
+
+object ConflictingRecipeRoute : BaseRoute<String>("recipes") {
+
+    override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): String {
+        return "Conflict"
+    }
+}
+
+object FallbackAction : Action<String> {
+
+    override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): String {
+        return "Fallback"
+    }
+}
