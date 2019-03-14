@@ -68,7 +68,7 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
 
         val key = partialMatcher.group(1)
         val userPattern = partialMatcher.group(3) ?: return Pair(key, inPart)
-        val inputMatcher = Pattern.compile("^$userPattern$").matcher(inPart)
+        val inputMatcher = Pattern.compile(userPattern).matcher(inPart)
         if (!inputMatcher.matches()) return null
 
         return Pair(key, inPart)
