@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 - Added SNAPSHOT releases to JFrog
 - Added handler resolution section to README
+- Support for simple regex path matching
 
 ### Fixed
 - Ensure that routes are always selected in order of registration
