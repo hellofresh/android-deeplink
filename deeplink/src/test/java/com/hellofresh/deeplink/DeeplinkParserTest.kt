@@ -26,11 +26,7 @@ class DeepLinkParserTest {
     private val parser = DeepLinkParser.of<String>(EmptyEnvironment)
         .addRoute(RecipeRoute)
         .addRoute(SubscriptionRoute)
-        .addFallbackAction(object : Action<String> {
-            override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): String {
-                return "fallback"
-            }
-        })
+        .addFallbackAction(FallbackAction)
         .build()
 
     @Test
@@ -58,7 +54,26 @@ class DeepLinkParserTest {
     }
 
     @Test
+    fun parseWithConflictingRouter() {
+        // RecipeRoute registered first
+        var parserWithConflict = DeepLinkParser.of<String>(EmptyEnvironment)
+            .addRoute(RecipeRoute)
+            .addRoute(ConflictingRecipeRoute)
+            .addFallbackAction(FallbackAction)
+            .build()
+        assertEquals("RecipeRoute", parserWithConflict.parse(DeepLinkUri.parse("http://world.com/recipes")))
+
+        // ConflictingRoute registered first
+        parserWithConflict = DeepLinkParser.of<String>(EmptyEnvironment)
+            .addRoute(ConflictingRecipeRoute)
+            .addRoute(RecipeRoute)
+            .addFallbackAction(FallbackAction)
+            .build()
+        assertEquals("Conflict", parserWithConflict.parse(DeepLinkUri.parse("http://world.com/recipes")))
+    }
+
+    @Test
     fun parseFallback() {
-        assertEquals("fallback", parser.parse(DeepLinkUri.parse("http://world.com/unknown")))
+        assertEquals("Fallback", parser.parse(DeepLinkUri.parse("http://world.com/unknown")))
     }
 }

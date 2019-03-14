@@ -33,7 +33,7 @@ class DeepLinkParser<T>(
 
     class Builder<T>(private val environment: Environment) {
 
-        private val routes: MutableSet<BaseRoute<T>> = hashSetOf()
+        private val routes: MutableSet<BaseRoute<T>> = LinkedHashSet()
         private var defaultFallback: Action<T>? = null
 
         fun addRoute(route: BaseRoute<T>) = apply {
