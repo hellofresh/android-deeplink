@@ -4,7 +4,43 @@
 
 Deeplink parser library
 
-## Sample usage
+## Deep Link Handler Resolution
+This section describes the approach taken by the parser to resolve the handler that processes a deep link.
+
+A parser is instantiated with a set of Routes and a fallback Action.
+The parser goes through these routes (in the order of registration) until it finds one that is able to handle the link.
+The order is important in a case where multiple routes can handle the same deep link. In such cases, the first match is ALWAYS selected.  
+The fallback action gets executed if there are no registered routes, or if non of the registered routes are able to handle the deep link.
+
+
+Each route reports whether or not it's able to handle a link to the parser. The report also contains a map of key/value pairs that will be discussed in the path matching sub-section.
+Once a suitable handler is found, the parser then forwards the URI and the key/value map back to the handler for actual processing.  
+The output of this is then returned as the final result of the parse request.
+
+The logic to determine whether/not a route can handle a link is described below
+
+### Path matching
+A Route is made up of an array of route patterns. The deep link will be tested against each of these patterns to determine whether/not the Route can handle the link.  
+If a match is found, we return immediately, otherwise, we test the link against all patterns, and fallback to NO-MATCH if none of them matches the link.
+
+A route pattern is a string representing the path segments of a deep link URI. The pattern is broken down into its constituent parts/segments and each part is tested against the corresponding part of the deep link path segments.  
+We take a fast path by immediately returning a NO-MATCH if the size of the pattern segments is not the same as that of the URI path segments.
+
+A route pattern part can be one of the following:
+
+1. **Simple string:**
+This is a static string defined at compile time that must be exactly the same as the corresponding part of the deep link.
+
+2. **Wildcard (\*)**:
+This is quite straightforward, as the wildcard always passes unconditionally
+
+3. **Parameterized string**:
+This is a simple word that starts with a `:`. Similar to wildcard, it also passes unconditionally.
+The word will later be used as the key in the param map, and the corresponding URI part as its value.
+
+A Route can be configured such that it treats the host of the input deep link as the first part of the path segments. This can come handy for use with deep links made up of custom schemes and that do not necessarily define an explicit host.
+
+## Sample Usage
 The most important entry points are the `DeepLinkParser<T>` and `BaseRoute<T>` classes.
 
 You will typically define all routes and their corresponding actions by creating 
@@ -83,6 +119,7 @@ repositories {
     maven { url 'http://oss.jfrog.org/artifactory/oss-snapshot-local/' }
 }
 ```
+
 
 License
 -------
