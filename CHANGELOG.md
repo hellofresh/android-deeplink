@@ -4,6 +4,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## [Unreleased]
+### Removed
+- Removed support for retrieving queries from the params map
 
 ## [0.3.0] - 2019-03-14
 ### Added

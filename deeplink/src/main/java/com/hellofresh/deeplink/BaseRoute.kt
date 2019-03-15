@@ -40,12 +40,6 @@ abstract class BaseRoute<out T>(private vararg val routes: String) : Action<T> {
                     routePart != inPart -> return@forEach
                 }
             }
-            uri.queryParameterNames()
-                .filter { it !in params }
-                .forEach { key ->
-                    val queryValue = uri.queryParameter(key) ?: error("""Query "$key" has a null value!""")
-                    params[key] = queryValue
-                }
             return MatchResult(true, params)
         }
         return MatchResult(false)
