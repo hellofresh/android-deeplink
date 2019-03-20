@@ -8,7 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.3.1] - 2019-03-20
 ### Removed
 - Removed support for retrieving queries from the params map.
-  - As a side effect, it also fixes crashes from purely constructed (but still valid) deep links
+  - As a side effect, it also fixes crashes from poorly constructed (but still valid) deep links
 
 ## [0.3.0] - 2019-03-14
 ### Added

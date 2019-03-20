@@ -17,7 +17,7 @@
 object Project {
 
     const val artifactId = "deeplink"
-    const val version = "0.3.1"
+    const val version = "0.4.0-SNAPSHOT"
     const val groupId = "com.hellofresh.android"
     const val name = "android-$artifactId"
 }
