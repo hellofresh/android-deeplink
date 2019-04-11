@@ -1,6 +1,5 @@
 package com.hellofresh.deeplink.intent
 
-import android.app.TaskStackBuilder
 import android.content.Context
 import android.content.Intent
 import com.hellofresh.deeplink.Action
@@ -26,8 +25,9 @@ fun main() {
 
 
     // In Authenticator Activity
+    val activityThis = env.context
     val intent = Intent() // authenticator's own intent
-    if (!IntentResult.advance(intent)) {
+    if (!IntentResult.advance(activityThis, intent)) {
         // Start regular flow after authentication
     }
     // Finish authenticator activity eventually right? Just as usual
@@ -43,7 +43,8 @@ object RecipeRoute : BaseRoute<IntentResult>("recipe") {
             .putExtra("keyC", params["c"])
             .setClassName("com.hellofresh.androidapp", "RecipeActivity")
 
-        return IntentResult.of(env, intent)
+        return IntentResult.of(env)
+            .intentStack(intent)
             .requiresAuth(true)
             .create()
     }
@@ -52,14 +53,11 @@ object RecipeRoute : BaseRoute<IntentResult>("recipe") {
 object SubscriptionRoute : BaseRoute<IntentResult>("subscription") {
 
     override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): IntentResult {
-        val intent = Intent().setClassName("com.hellofresh.androidapp", "SubscriptionActivity")
-        val parentIntent = Intent().setClassName("com.hellofresh.androidapp", "MainActivity")
-
-        val taskStack = TaskStackBuilder.create(env.context)
-            .addNextIntentWithParentStack(parentIntent)
-            .addNextIntent(intent)
-
-        return IntentResult.of(env, taskStack)
+        return IntentResult.of(env)
+            .intentStack(
+                Intent().setClassName("com.hellofresh.androidapp", "MainActivity"),
+                Intent().setClassName("com.hellofresh.androidapp", "SubscriptionActivity")
+            )
             .requiresAuth(true)
             .create()
     }
@@ -69,7 +67,8 @@ object Fallback : Action<IntentResult> {
 
     override fun run(uri: DeepLinkUri, params: Map<String, String>, env: Environment): IntentResult {
         val defaultIntent = Intent().setClassName("com.hellofresh.androidapp", "MainActivity")
-        return IntentResult.of(env, defaultIntent)
+        return IntentResult.of(env)
+            .intentStack(defaultIntent)
             .requiresAuth(false)
             .isFallback(true)
             .create()
