@@ -38,6 +38,7 @@ object Versions {
     const val junit = "4.12"
     const val kotlin = "1.3.72"
     const val okio = "2.6.0"
+    const val unmock = "0.7.6"
 }
 
 object Dependencies {
@@ -45,6 +46,7 @@ object Dependencies {
     const val androidGradlePlugin = "com.android.tools.build:gradle:${Versions.androidGradlePlugin}"
     const val kotlinStdLib = "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${Versions.kotlin}"
     const val okio = "com.squareup.okio:okio:${Versions.okio}"
+    const val unmockPlugin = "de.mobilej.unmock:UnMockPlugin:${Versions.unmock}"
 }
 
 object DependenciesTest {
@@ -52,4 +54,5 @@ object DependenciesTest {
     const val junit = "junit:junit:${Versions.junit}"
     const val kotlinTest = "org.jetbrains.kotlin:kotlin-test:${Versions.kotlin}"
     const val kotlinTestJunit = "org.jetbrains.kotlin:kotlin-test-junit:${Versions.kotlin}"
+    const val robolectricAndroid = "org.robolectric:android-all:4.3_r2-robolectric-0"
 }

@@ -23,6 +23,7 @@ import org.jfrog.gradle.plugin.artifactory.dsl.ResolverConfig
 plugins {
     id("com.android.library")
     id("kotlin-android")
+    id("de.mobilej.unmock")
     id("maven-publish")
     id("com.jfrog.bintray") version Versions.bintrayGradlePlugin
     id("org.jetbrains.dokka-android") version Versions.dokkaAndroid
@@ -46,9 +47,16 @@ version = Project.version
 dependencies {
     implementation(Dependencies.kotlinStdLib)
     implementation(Dependencies.okio)
+    unmock(DependenciesTest.robolectricAndroid)
     testImplementation(DependenciesTest.junit)
     testImplementation(DependenciesTest.kotlinTest)
     testImplementation(DependenciesTest.kotlinTestJunit)
+}
+
+unMock {
+    keep("android.net.Uri")
+    keepStartingWith("libcore.")
+    keepAndRename("java.nio.charset.Charsets").to("xjava.nio.charset.Charsets")
 }
 
 val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}-release.aar"
