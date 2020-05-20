@@ -29,22 +29,20 @@ object Android {
 
 object Versions {
 
-    const val androidGradlePlugin = "3.4.0-rc01"
-    const val bintrayGradlePlugin = "1.8.4"
-    const val detekt = "1.0.0-RC12"
-    const val dokkaAndroid = "0.9.17"
-    const val jfrogArtifactory = "4.9.3"
-    const val junitJacoco = "0.13.0"
+    const val androidGradlePlugin = "3.6.3"
+    const val bintrayGradlePlugin = "1.8.5"
+    const val detekt = "1.9.1"
+    const val dokkaAndroid = "0.9.18"
+    const val jfrogArtifactory = "4.15.2"
+    const val junitJacoco = "0.16.0"
     const val junit = "4.12"
-    const val kotlin = "1.3.21"
-    const val okio = "2.1.0"
-    const val supportTest = "1.0.2"
+    const val kotlin = "1.3.72"
+    const val okio = "2.6.0"
 }
 
 object Dependencies {
 
     const val androidGradlePlugin = "com.android.tools.build:gradle:${Versions.androidGradlePlugin}"
-    const val kotlinGradle = "org.jetbrains.kotlin:kotlin-gradle-plugin:${Versions.kotlin}"
     const val kotlinStdLib = "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${Versions.kotlin}"
     const val okio = "com.squareup.okio:okio:${Versions.okio}"
 }
@@ -54,5 +52,4 @@ object DependenciesTest {
     const val junit = "junit:junit:${Versions.junit}"
     const val kotlinTest = "org.jetbrains.kotlin:kotlin-test:${Versions.kotlin}"
     const val kotlinTestJunit = "org.jetbrains.kotlin:kotlin-test-junit:${Versions.kotlin}"
-    const val supportTestRunner = "com.android.support.test:runner:${Versions.supportTest}"
 }

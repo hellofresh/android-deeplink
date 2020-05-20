@@ -49,16 +49,12 @@ dependencies {
     testImplementation(DependenciesTest.junit)
     testImplementation(DependenciesTest.kotlinTest)
     testImplementation(DependenciesTest.kotlinTestJunit)
-    androidTestImplementation(DependenciesTest.junit)
-    androidTestImplementation(DependenciesTest.kotlinTest)
-    androidTestImplementation(DependenciesTest.kotlinTestJunit)
-    androidTestImplementation(DependenciesTest.supportTestRunner)
 }
 
 val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}-release.aar"
 
 val sourcesJar by tasks.creating(Jar::class) {
-    classifier = "sources"
+    archiveClassifier.set("sources")
     from(android.sourceSets.getByName("main").java.srcDirs)
 }
 
@@ -70,7 +66,7 @@ val dokka by tasks.getting(DokkaTask::class) {
 val dokkaJar by tasks.creating(Jar::class) {
     group = JavaBasePlugin.DOCUMENTATION_GROUP
     description = "Assembles Kotlin docs with Dokka"
-    classifier = "javadoc"
+    archiveClassifier.set("javadoc")
     from(dokka)
 }
 
@@ -121,7 +117,7 @@ bintray {
 
 fun MavenPom.addDependencies() = withXml {
     asNode().appendNode("dependencies").let { depNode ->
-        configurations.compile.allDependencies.forEach {
+        configurations.compile.get().allDependencies.forEach {
             depNode.appendNode("dependency").apply {
                 appendNode("groupId", it.group)
                 appendNode("artifactId", it.name)

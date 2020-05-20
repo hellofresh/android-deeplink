@@ -49,11 +49,12 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 detekt {
-    input = files("src/main/kotlin")
-    filters = ".*/resources/.*,.*/build/.*"
+    buildUponDefaultConfig = true
+    reports.txt.enabled = false
+    reports.html.enabled = false
 }
 
 junitJacoco {
-    jacocoVersion = "0.8.2"
+    jacocoVersion = "0.8.5"
     excludes = Excludes.jacocoAndroid
 }
