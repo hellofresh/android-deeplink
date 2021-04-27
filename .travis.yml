@@ -23,7 +23,6 @@ cache:
 script:
   - "./gradlew --stacktrace check --no-daemon"
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
   - ./script/deploy-snapshot.sh
 deploy:
   - provider: script
