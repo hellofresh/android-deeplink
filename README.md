@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/hellofresh/android-deeplink.svg?branch=master)](https://travis-ci.org/hellofresh/android-deeplink) [![codecov](https://codecov.io/gh/hellofresh/android-deeplink/branch/master/graph/badge.svg?token=pYXRTssjCY)](https://codecov.io/gh/hellofresh/android-deeplink) [ ![Download](https://api.bintray.com/packages/hellofresh/maven/android-deeplink/images/download.svg) ](https://bintray.com/hellofresh/maven/android-deeplink/_latestVersion)
+[![Build Status](https://travis-ci.org/hellofresh/android-deeplink.svg?branch=master)](https://travis-ci.org/hellofresh/android-deeplink) [ ![Download](https://api.bintray.com/packages/hellofresh/maven/android-deeplink/images/download.svg) ](https://bintray.com/hellofresh/maven/android-deeplink/_latestVersion)
 
 # android-deeplink
 
