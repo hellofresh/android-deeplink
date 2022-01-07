@@ -1,5 +1,9 @@
 [![Build Status](https://travis-ci.org/hellofresh/android-deeplink.svg?branch=master)](https://travis-ci.org/hellofresh/android-deeplink) [ ![Download](https://api.bintray.com/packages/hellofresh/maven/android-deeplink/images/download.svg) ](https://bintray.com/hellofresh/maven/android-deeplink/_latestVersion)
 
+# DEPRECATED
+
+The porject is no longer maintained. PLease consider copying the source code and creating the local library module if you are still relying on it. 
+
 # android-deeplink
 
 Deeplink parser library
