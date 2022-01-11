@@ -2,7 +2,7 @@
 
 # DEPRECATED
 
-The porject is no longer maintained. PLease consider copying the source code and creating the local library module if you are still relying on it. 
+The project is no longer maintained. Please consider copying the source code and creating the local library module if you are still relying on it. 
 
 # android-deeplink
 
