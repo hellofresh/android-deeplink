@@ -1,7 +1,4 @@
-import groovy.lang.GroovyObject
-import org.jetbrains.dokka.gradle.DokkaTask
-import org.jfrog.gradle.plugin.artifactory.dsl.PublisherConfig
-import org.jfrog.gradle.plugin.artifactory.dsl.ResolverConfig
+@file:Suppress("PropertyName")
 
 /*
  * Copyright (c) 2019.  The HelloFresh Android Team
@@ -24,17 +21,16 @@ plugins {
     kotlin("android")
     id("de.mobilej.unmock")
     id("maven-publish")
-    alias(libs.plugins.bintray)
+    id("signing")
     alias(libs.plugins.dokkaAndroid)
-    alias(libs.plugins.jfrogArtifactory)
 }
 
 android {
-    compileSdkVersion(30)
+    compileSdk = 30
     defaultConfig {
-        minSdkVersion(17)
-        targetSdkVersion(30)
-        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
+        minSdk = 17
+        targetSdk = 30
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 }
 
@@ -52,28 +48,48 @@ unMock {
     keepAndRename("java.nio.charset.Charsets").to("xjava.nio.charset.Charsets")
 }
 
+tasks.dokkaHtml.configure {
+    dokkaSourceSets.named("main") {
+        noAndroidSdkLink.set(false)
+    }
+}
+
 val sourcesJar by tasks.creating(Jar::class) {
     archiveClassifier.set("sources")
     from(android.sourceSets.getByName("main").java.srcDirs)
 }
 
-val dokka by tasks.getting(DokkaTask::class) {
-    outputFormat = "html"
-    outputDirectory = "$buildDir/javadoc"
-}
-
-val dokkaJar by tasks.creating(Jar::class) {
-    group = JavaBasePlugin.DOCUMENTATION_GROUP
-    description = "Assembles Kotlin docs with Dokka"
+val javadocJar by tasks.creating(Jar::class) {
     archiveClassifier.set("javadoc")
-    from(dokka)
+    from(tasks.named("dokkaJavadoc"))
 }
 
 val GROUP_ID: String by rootProject
 val VERSION_NAME: String by rootProject
+val REPOSITORY: String by rootProject
 val ARTIFACT_ID: String by project
+val ARTIFACT_NAME: String by project
+val ARTIFACT_DESCRIPTION: String by project
 
 publishing {
+    repositories {
+        maven {
+            name = "Snapshot"
+            url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots")
+            credentials {
+                username = extra.getValue("ossrh.username")
+                password = extra.getValue("ossrh.password")
+            }
+        }
+        maven {
+            name = "Staging"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2")
+            credentials {
+                username = extra.getValue("ossrh.username")
+                password = extra.getValue("ossrh.password")
+            }
+        }
+    }
     publications {
         register<MavenPublication>("release") {
             group = GROUP_ID
@@ -84,50 +100,35 @@ publishing {
             afterEvaluate {
                 from(components.getByName("release"))
                 artifact(sourcesJar)
-                artifact(dokkaJar)
+                artifact(javadocJar)
+            }
+
+            pom {
+                name.set(ARTIFACT_NAME)
+                description.set(ARTIFACT_DESCRIPTION)
+                url.set("https://github.com/$REPOSITORY")
+
+                licenses {
+                    license {
+                        name.set("The Apache Software License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("kingsleyadio")
+                        name.set("Kingsley Adio")
+                        email.set("adiksonline@gmail.com")
+                    }
+                }
             }
         }
     }
 }
 
-bintray {
-    user = System.getenv("BINTRAY_USER") ?: ""
-    key = System.getenv("BINTRAY_API_KEY") ?: ""
-    publish = true
-    setPublications(ARTIFACT_ID)
-    with(pkg) {
-        repo = "maven"
-        name = rootProject.name
-        websiteUrl = "https://github.com/kingsleyadio/android-deeplink/"
-        githubRepo = "kingsleyadio/android-deeplink"
-        vcsUrl = "https://github.com/kingsleyadio/android-deeplink/"
-        description = "Deeplink parser library"
-        desc = description
-        publish = true
-        githubRepo = "kingsleyadio/android-deeplink"
-        githubReleaseNotesFile = "../CHANGELOG.md"
-        version.name = VERSION_NAME
-        setLabels("kotlin", "Android", "Deep link")
-        setLicenses("Apache-2.0")
-    }
+signing {
+    sign(publishing.publications.getByName("release"))
+    isRequired = VERSION_NAME.endsWith("SNAPSHOT").not()
 }
 
-artifactory {
-    setContextUrl("https://oss.jfrog.org")
-    publish(delegateClosureOf<PublisherConfig> {
-        repository(delegateClosureOf<GroovyObject> {
-            val repoKey = if (VERSION_NAME.endsWith("SNAPSHOT")) "oss-snapshot-local" else "oss-release-local"
-            setProperty("repoKey", repoKey)
-            setProperty("username", System.getenv("BINTRAY_USER") ?: "")
-            setProperty("password", System.getenv("BINTRAY_API_KEY") ?: "")
-            setProperty("maven", true)
-        })
-        defaults(delegateClosureOf<GroovyObject> {
-            invokeMethod("publications", ARTIFACT_ID)
-        })
-
-        resolve(delegateClosureOf<ResolverConfig> {
-            setProperty("repoKey", "jcenter")
-        })
-    })
-}
+inline fun <reified T> ExtraPropertiesExtension.getValue(key: String) = get(key) as T

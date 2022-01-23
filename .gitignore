@@ -34,7 +34,6 @@ captures/
 # Local configuration file (sdk path, etc)
 local.properties
 library.properties
-gradle.properties
 
 
 # Android studio

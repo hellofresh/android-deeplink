@@ -33,8 +33,18 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 detekt {
     buildUponDefaultConfig = true
-    reports.txt.enabled = false
-    reports.html.enabled = false
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt> {
+    reports {
+        xml.required.set(true) // checkstyle like format mainly for integrations like Jenkins
+        sarif.required.set(false) // support integrations with Github Code Scanning
+    }
+}
+
+extensions.findByName("buildScan")?.withGroovyBuilder {
+    setProperty("termsOfServiceUrl", "https://gradle.com/terms-of-service")
+    setProperty("termsOfServiceAgree", "yes")
 }
 
 junitJacoco {

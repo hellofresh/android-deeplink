@@ -1,21 +1,19 @@
 [versions]
-jacoco = "0.8.5"
-kotlin = "1.3.72"
+jacoco = "0.8.7"
+kotlin = "1.6.10"
 
 [libraries]
-agp = "com.android.tools.build:gradle:3.6.3"
+agp = "com.android.tools.build:gradle:7.0.4"
 kotlinGradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinStdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
 kotlinTestJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
-okio = "com.squareup.okio:okio:2.6.0"
+okio = "com.squareup.okio:okio:3.0.0"
 robolectricAndroid = "org.robolectric:android-all:4.3_r2-robolectric-0"
-unmockGradle = "de.mobilej.unmock:UnMockPlugin:0.7.6"
+unmockGradle = "com.github.bjoernq:unmockplugin:0.7.9"
 
 [bundles]
 
 [plugins]
-bintray = { id = "com.jfrog.bintray", version = "1.8.5" }
-detekt = { id = "io.gitlab.arturbosch.detekt", version = "1.9.1" }
-dokkaAndroid = { id = "org.jetbrains.dokka-android", version = "0.9.18" }
-jfrogArtifactory = { id = "com.jfrog.artifactory", version = "4.15.2" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version = "1.19.0" }
+dokkaAndroid = { id = "org.jetbrains.dokka", version.ref = "kotlin" }
 junitJacoco = { id = "com.vanniktech.android.junit.jacoco", version = "0.16.0" }
