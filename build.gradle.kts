@@ -15,10 +15,6 @@
  */
 
 buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
     dependencies {
         classpath(libs.agp)
         classpath(libs.kotlinGradle)
@@ -29,13 +25,6 @@ buildscript {
 plugins {
     alias(libs.plugins.detekt)
     alias(libs.plugins.junitJacoco)
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
