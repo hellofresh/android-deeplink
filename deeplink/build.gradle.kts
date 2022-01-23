@@ -1,5 +1,4 @@
 import groovy.lang.GroovyObject
-import org.gradle.api.publish.maven.MavenPom
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jfrog.gradle.plugin.artifactory.dsl.PublisherConfig
 import org.jfrog.gradle.plugin.artifactory.dsl.ResolverConfig
@@ -22,35 +21,29 @@ import org.jfrog.gradle.plugin.artifactory.dsl.ResolverConfig
 
 plugins {
     id("com.android.library")
-    id("kotlin-android")
+    kotlin("android")
     id("de.mobilej.unmock")
     id("maven-publish")
-    id("com.jfrog.bintray") version Versions.bintrayGradlePlugin
-    id("org.jetbrains.dokka-android") version Versions.dokkaAndroid
-    id("com.jfrog.artifactory") version Versions.jfrogArtifactory
+    alias(libs.plugins.bintray)
+    alias(libs.plugins.dokkaAndroid)
+    alias(libs.plugins.jfrogArtifactory)
 }
 
 android {
-    compileSdkVersion(Android.sdk)
+    compileSdkVersion(30)
     defaultConfig {
-        minSdkVersion(Android.minSdk)
-        targetSdkVersion(Android.sdk)
-        versionName = Project.version
-        setProperty("archivesBaseName", "${Project.name}-${Project.version}")
+        minSdkVersion(17)
+        targetSdkVersion(30)
         testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
     }
 }
 
-group = Project.groupId
-version = Project.version
-
 dependencies {
-    implementation(Dependencies.kotlinStdLib)
-    implementation(Dependencies.okio)
-    unmock(DependenciesTest.robolectricAndroid)
-    testImplementation(DependenciesTest.junit)
-    testImplementation(DependenciesTest.kotlinTest)
-    testImplementation(DependenciesTest.kotlinTestJunit)
+    implementation(libs.kotlinStdlib)
+    implementation(libs.okio)
+
+    unmock(libs.robolectricAndroid)
+    testImplementation(libs.kotlinTestJunit)
 }
 
 unMock {
@@ -58,8 +51,6 @@ unMock {
     keepStartingWith("libcore.")
     keepAndRename("java.nio.charset.Charsets").to("xjava.nio.charset.Charsets")
 }
-
-val artifact = "$buildDir/outputs/aar/${Project.name}-${Project.version}-release.aar"
 
 val sourcesJar by tasks.creating(Jar::class) {
     archiveClassifier.set("sources")
@@ -78,23 +69,23 @@ val dokkaJar by tasks.creating(Jar::class) {
     from(dokka)
 }
 
-artifacts {
-    archives(sourcesJar)
-    archives(dokkaJar)
-}
-
+val GROUP_ID: String by rootProject
+val VERSION_NAME: String by rootProject
+val ARTIFACT_ID: String by project
 
 publishing {
-
     publications {
-        register(Project.artifactId, MavenPublication::class) {
-            groupId = Project.groupId
-            artifactId = Project.artifactId
-            version = Project.version
-            artifact(artifact)
-            artifact(sourcesJar)
-            artifact(dokkaJar)
-            pom.addDependencies()
+        register<MavenPublication>("release") {
+            group = GROUP_ID
+            version = VERSION_NAME
+            groupId = GROUP_ID
+            artifactId = ARTIFACT_ID
+
+            afterEvaluate {
+                from(components.getByName("release"))
+                artifact(sourcesJar)
+                artifact(dokkaJar)
+            }
         }
     }
 }
@@ -103,35 +94,21 @@ bintray {
     user = System.getenv("BINTRAY_USER") ?: ""
     key = System.getenv("BINTRAY_API_KEY") ?: ""
     publish = true
-    setPublications(Project.artifactId)
+    setPublications(ARTIFACT_ID)
     with(pkg) {
         repo = "maven"
-        name = Project.name
-        websiteUrl = "https://github.com/hellofresh/android-deeplink/"
-        githubRepo = "hellofresh/android-deeplink"
-        vcsUrl = "https://github.com/hellofresh/android-deeplink/"
+        name = rootProject.name
+        websiteUrl = "https://github.com/kingsleyadio/android-deeplink/"
+        githubRepo = "kingsleyadio/android-deeplink"
+        vcsUrl = "https://github.com/kingsleyadio/android-deeplink/"
         description = "Deeplink parser library"
         desc = description
         publish = true
-        githubRepo = "hellofresh/android-deeplink"
+        githubRepo = "kingsleyadio/android-deeplink"
         githubReleaseNotesFile = "../CHANGELOG.md"
-        with(version) {
-            name = Project.version
-        }
+        version.name = VERSION_NAME
         setLabels("kotlin", "Android", "Deep link")
         setLicenses("Apache-2.0")
-    }
-}
-
-fun MavenPom.addDependencies() = withXml {
-    asNode().appendNode("dependencies").let { depNode ->
-        configurations.compile.get().allDependencies.forEach {
-            depNode.appendNode("dependency").apply {
-                appendNode("groupId", it.group)
-                appendNode("artifactId", it.name)
-                appendNode("version", it.version)
-            }
-        }
     }
 }
 
@@ -139,14 +116,14 @@ artifactory {
     setContextUrl("https://oss.jfrog.org")
     publish(delegateClosureOf<PublisherConfig> {
         repository(delegateClosureOf<GroovyObject> {
-            val repoKey = if (Project.version.endsWith("SNAPSHOT")) "oss-snapshot-local" else "oss-release-local"
+            val repoKey = if (VERSION_NAME.endsWith("SNAPSHOT")) "oss-snapshot-local" else "oss-release-local"
             setProperty("repoKey", repoKey)
             setProperty("username", System.getenv("BINTRAY_USER") ?: "")
             setProperty("password", System.getenv("BINTRAY_API_KEY") ?: "")
             setProperty("maven", true)
         })
         defaults(delegateClosureOf<GroovyObject> {
-            invokeMethod("publications", Project.artifactId)
+            invokeMethod("publications", ARTIFACT_ID)
         })
 
         resolve(delegateClosureOf<ResolverConfig> {
