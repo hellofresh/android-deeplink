@@ -7,6 +7,7 @@ agp = "com.android.tools.build:gradle:7.0.4"
 kotlinGradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinStdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
 kotlinTestJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+mavenPublishGradle = "com.vanniktech:gradle-maven-publish-plugin:0.18.0"
 okio = "com.squareup.okio:okio:3.0.0"
 robolectricAndroid = "org.robolectric:android-all:4.3_r2-robolectric-0"
 unmockGradle = "com.github.bjoernq:unmockplugin:0.7.9"
@@ -15,5 +16,5 @@ unmockGradle = "com.github.bjoernq:unmockplugin:0.7.9"
 
 [plugins]
 detekt = { id = "io.gitlab.arturbosch.detekt", version = "1.19.0" }
-dokkaAndroid = { id = "org.jetbrains.dokka", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "kotlin" }
 junitJacoco = { id = "com.vanniktech.android.junit.jacoco", version = "0.16.0" }

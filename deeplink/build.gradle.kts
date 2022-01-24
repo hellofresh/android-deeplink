@@ -20,9 +20,8 @@ plugins {
     id("com.android.library")
     kotlin("android")
     id("de.mobilej.unmock")
-    id("maven-publish")
-    id("signing")
-    alias(libs.plugins.dokkaAndroid)
+    id("org.jetbrains.dokka")
+    id("com.vanniktech.maven.publish.base")
 }
 
 android {
@@ -48,87 +47,10 @@ unMock {
     keepAndRename("java.nio.charset.Charsets").to("xjava.nio.charset.Charsets")
 }
 
-tasks.dokkaHtml.configure {
-    dokkaSourceSets.named("main") {
-        noAndroidSdkLink.set(false)
-    }
+mavenPublishing {
+    configure(
+        com.vanniktech.maven.publish.AndroidLibrary(
+            com.vanniktech.maven.publish.JavadocJar.Dokka("dokkaJavadoc")
+        )
+    )
 }
-
-val sourcesJar by tasks.creating(Jar::class) {
-    archiveClassifier.set("sources")
-    from(android.sourceSets.getByName("main").java.srcDirs)
-}
-
-val javadocJar by tasks.creating(Jar::class) {
-    archiveClassifier.set("javadoc")
-    from(tasks.named("dokkaJavadoc"))
-}
-
-val GROUP_ID: String by rootProject
-val VERSION_NAME: String by rootProject
-val REPOSITORY: String by rootProject
-val ARTIFACT_ID: String by project
-val ARTIFACT_NAME: String by project
-val ARTIFACT_DESCRIPTION: String by project
-
-publishing {
-    repositories {
-        maven {
-            name = "Snapshot"
-            url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots")
-            credentials {
-                username = extra.getValue("ossrh.username")
-                password = extra.getValue("ossrh.password")
-            }
-        }
-        maven {
-            name = "Staging"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2")
-            credentials {
-                username = extra.getValue("ossrh.username")
-                password = extra.getValue("ossrh.password")
-            }
-        }
-    }
-    publications {
-        register<MavenPublication>("release") {
-            group = GROUP_ID
-            version = VERSION_NAME
-            groupId = GROUP_ID
-            artifactId = ARTIFACT_ID
-
-            afterEvaluate {
-                from(components.getByName("release"))
-                artifact(sourcesJar)
-                artifact(javadocJar)
-            }
-
-            pom {
-                name.set(ARTIFACT_NAME)
-                description.set(ARTIFACT_DESCRIPTION)
-                url.set("https://github.com/$REPOSITORY")
-
-                licenses {
-                    license {
-                        name.set("The Apache Software License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("kingsleyadio")
-                        name.set("Kingsley Adio")
-                        email.set("adiksonline@gmail.com")
-                    }
-                }
-            }
-        }
-    }
-}
-
-signing {
-    sign(publishing.publications.getByName("release"))
-    isRequired = VERSION_NAME.endsWith("SNAPSHOT").not()
-}
-
-inline fun <reified T> ExtraPropertiesExtension.getValue(key: String) = get(key) as T
